@@ -3,6 +3,7 @@ import { fetchDraftProspects, fetchDraftResults } from "@/lib/api";
 import * as CountryFlags from "country-flag-icons/react/3x2";
 import Image from "next/image";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight, GraduationCap } from "lucide-react";
 
 interface Props {
   params: Promise<{ year: string }>;
@@ -59,11 +60,14 @@ export default async function DraftYearPage({ params }: Props) {
     : [];
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-4">
+    <div className="space-y-5">
+      <section className="space-y-4 rounded-3xl border border-slate-200/60 bg-white/75 p-5 backdrop-blur-xl dark:border-[#1D428A]/45 dark:bg-slate-900/75">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{draftYear} NBA Draft</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="inline-flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+            <GraduationCap className="h-6 w-6 text-[#1D428A] dark:text-white" />
+            {draftYear} NBA Draft
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
             {isProspectsOnlyYear
               ? "Top 100 draft prospects for the 2026 class"
               : "Historic draft results by year"}
@@ -75,26 +79,28 @@ export default async function DraftYearPage({ params }: Props) {
             {prevYear ? (
               <Link
                 href={`/draft/${prevYear}`}
-                className="px-3 py-1.5 rounded-md text-sm font-medium border border-gray-200 dark:border-gray-700 hover:border-[#17408B] dark:hover:border-blue-500 hover:text-[#17408B] dark:hover:text-blue-400 transition-colors"
+                className="inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-slate-600 transition-all duration-200 hover:scale-[1.02] hover:border-[#1D428A] hover:text-[#1D428A] dark:border-[#1D428A]/45 dark:bg-slate-900/70 dark:text-slate-100"
               >
-                ← {prevYear}
+                <ChevronLeft className="h-4 w-4" />
+                {prevYear}
               </Link>
             ) : (
-              <span className="px-3 py-1.5 rounded-md text-sm font-medium border border-gray-100 dark:border-gray-800 text-gray-300 dark:text-gray-600">
-                ←
+              <span className="inline-flex items-center rounded-full border border-slate-200/70 px-3 py-1.5 text-sm text-slate-300 dark:border-[#1D428A]/45 dark:text-slate-500">
+                <ChevronLeft className="h-4 w-4" />
               </span>
             )}
 
             {nextYear ? (
               <Link
                 href={`/draft/${nextYear}`}
-                className="px-3 py-1.5 rounded-md text-sm font-medium border border-gray-200 dark:border-gray-700 hover:border-[#17408B] dark:hover:border-blue-500 hover:text-[#17408B] dark:hover:text-blue-400 transition-colors"
+                className="inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-slate-600 transition-all duration-200 hover:scale-[1.02] hover:border-[#1D428A] hover:text-[#1D428A] dark:border-[#1D428A]/45 dark:bg-slate-900/70 dark:text-slate-100"
               >
-                {nextYear} →
+                {nextYear}
+                <ChevronRight className="h-4 w-4" />
               </Link>
             ) : (
-              <span className="px-3 py-1.5 rounded-md text-sm font-medium border border-gray-100 dark:border-gray-800 text-gray-300 dark:text-gray-600">
-                →
+              <span className="inline-flex items-center rounded-full border border-slate-200/70 px-3 py-1.5 text-sm text-slate-300 dark:border-[#1D428A]/45 dark:text-slate-500">
+                <ChevronRight className="h-4 w-4" />
               </span>
             )}
           </div>
@@ -104,10 +110,10 @@ export default async function DraftYearPage({ params }: Props) {
               <Link
                 key={optionYear}
                 href={`/draft/${optionYear}`}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
+                className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition-all duration-200 ${
                   optionYear === draftYear
-                    ? "bg-[#17408B] text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-[#17408B] dark:hover:text-blue-400"
+                    ? "border-[#1D428A] bg-[#1D428A] text-white"
+                    : "border-slate-200/70 bg-white/80 text-slate-600 hover:scale-[1.02] hover:border-[#1D428A] hover:text-[#1D428A] dark:border-[#1D428A]/45 dark:bg-slate-900/70 dark:text-slate-200"
                 }`}
               >
                 {optionYear}
@@ -115,15 +121,15 @@ export default async function DraftYearPage({ params }: Props) {
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
       {error && <ErrorMessage message={error} />}
 
       {!error && draft && !isProspectsOnlyYear && (
-        <section className="space-y-4">
+        <section className="space-y-4 rounded-3xl border border-slate-200/60 bg-white/75 p-4 backdrop-blur-xl dark:border-[#1D428A]/45 dark:bg-slate-900/75">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Draft Results</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Draft Results</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
               {draft.picks.length > 0
                 ? `${draft.picks.length} picks from the ${draft.year} NBA Draft`
                 : `No published pick results for ${draft.year} yet.`}
@@ -131,7 +137,7 @@ export default async function DraftYearPage({ params }: Props) {
           </div>
 
           {picksByRound.length === 0 && (
-            <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500 dark:border-[#1D428A]/45 dark:text-slate-300">
               Draft picks are not available for this season yet.
             </div>
           )}
@@ -139,10 +145,10 @@ export default async function DraftYearPage({ params }: Props) {
           {picksByRound.map(({ round, picks }) => (
             <div
               key={round}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden"
+              className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-[#1D428A]/45"
             >
-              <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+              <div className="border-b border-slate-200/60 px-4 py-3 dark:border-[#1D428A]/45">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-600 dark:text-slate-200">
                   Round {round}
                 </h3>
               </div>
@@ -150,7 +156,7 @@ export default async function DraftYearPage({ params }: Props) {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-700/50 text-left text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <tr className="bg-slate-50/85 text-left text-xs uppercase tracking-[0.16em] text-slate-500 dark:bg-[#1D428A]/20 dark:text-slate-300">
                       <th className="px-3 py-3">Pick</th>
                       <th className="px-3 py-3">Overall</th>
                       <th className="px-3 py-3">Team</th>
@@ -159,11 +165,11 @@ export default async function DraftYearPage({ params }: Props) {
                       <th className="px-3 py-3">From</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  <tbody className="divide-y divide-slate-200/60 dark:divide-[#1D428A]/35">
                     {picks.map((pick) => (
-                      <tr key={`${pick.round}-${pick.pick}-${pick.player.id}-${pick.team.id}`}>
-                        <td className="px-3 py-3 font-semibold text-gray-800 dark:text-gray-200">#{pick.pick}</td>
-                        <td className="px-3 py-3 text-gray-600 dark:text-gray-400">{pick.overall}</td>
+                      <tr key={`${pick.round}-${pick.pick}-${pick.player.id}-${pick.team.id}`} className="transition-all duration-200 hover:bg-slate-50 dark:hover:bg-[#1D428A]/20">
+                        <td className="px-3 py-3 font-semibold text-slate-800 dark:text-slate-100">#{pick.pick}</td>
+                        <td className="px-3 py-3 text-slate-600 dark:text-slate-300">{pick.overall}</td>
                         <td className="px-3 py-3">
                           <div className="flex items-center gap-2">
                             {pick.team.logo ? (
@@ -177,9 +183,9 @@ export default async function DraftYearPage({ params }: Props) {
                               />
                             ) : null}
                             <div>
-                              <p className="text-gray-800 dark:text-gray-200">{pick.team.displayName}</p>
+                              <p className="text-slate-800 dark:text-slate-100">{pick.team.displayName}</p>
                               {(pick.traded || pick.tradeNote || (pick.status && pick.status !== "SELECTION_MADE")) && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-300">
                                   {pick.traded
                                     ? pick.tradeNote || "Traded pick"
                                     : pick.tradeNote || pick.status}
@@ -192,17 +198,17 @@ export default async function DraftYearPage({ params }: Props) {
                           {pick.player.id ? (
                             <Link
                               href={`/players/${pick.player.id}`}
-                              className="font-medium text-gray-900 dark:text-white hover:text-[#17408B] dark:hover:text-blue-400 transition-colors"
+                              className="font-semibold text-slate-900 transition-colors hover:text-[#1D428A] dark:text-white dark:hover:text-slate-100"
                             >
                               {pick.player.displayName}
                             </Link>
                           ) : (
-                            <span className="font-medium text-gray-900 dark:text-white">{pick.player.displayName}</span>
+                            <span className="font-semibold text-slate-900 dark:text-white">{pick.player.displayName}</span>
                           )}
                         </td>
-                        <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{pick.player.position ?? "-"}</td>
+                        <td className="px-3 py-3 text-slate-700 dark:text-slate-200">{pick.player.position ?? "-"}</td>
                         <td className="px-3 py-3">
-                          <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                             {pick.player.sourceTeamLogo ? (
                               <Image
                                 src={pick.player.sourceTeamLogo}
@@ -239,26 +245,26 @@ export default async function DraftYearPage({ params }: Props) {
       )}
 
       {!error && isProspectsOnlyYear && (
-        <section className="space-y-4">
+        <section className="space-y-4 rounded-3xl border border-slate-200/60 bg-white/75 p-4 backdrop-blur-xl dark:border-[#1D428A]/45 dark:bg-slate-900/75">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Top 100 Prospects</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Top 100 Prospects</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
               Pulled from ESPN core draft prospect rankings for the {DEFAULT_DRAFT_YEAR} class.
             </p>
           </div>
 
           {prospects && prospects.length === 0 && (
-            <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+            <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500 dark:border-[#1D428A]/45 dark:text-slate-300">
               Prospect rankings are not available right now.
             </div>
           )}
 
           {prospects && prospects.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/60 dark:border-[#1D428A]/45">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-700/50 text-left text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <tr className="bg-slate-50/85 text-left text-xs uppercase tracking-[0.16em] text-slate-500 dark:bg-[#1D428A]/20 dark:text-slate-300">
                       <th className="px-3 py-3">Rank</th>
                       <th className="px-3 py-3">Prospect</th>
                       <th className="px-3 py-3">Pos</th>
@@ -266,21 +272,21 @@ export default async function DraftYearPage({ params }: Props) {
                       <th className="px-3 py-3">Size</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  <tbody className="divide-y divide-slate-200/60 dark:divide-[#1D428A]/35">
                     {prospects.map((prospect) => (
-                      <tr key={`${prospect.rank}-${prospect.player.id}-${prospect.player.displayName}`}>
-                        <td className="px-3 py-3 font-semibold text-gray-800 dark:text-gray-200">#{prospect.rank}</td>
+                      <tr key={`${prospect.rank}-${prospect.player.id}-${prospect.player.displayName}`} className="transition-all duration-200 hover:bg-slate-50 dark:hover:bg-[#1D428A]/20">
+                        <td className="px-3 py-3 font-semibold text-slate-800 dark:text-slate-100">#{prospect.rank}</td>
                         <td className="px-3 py-3">
                           <Link
                             href={`/players/${prospect.player.id}`}
-                            className="font-medium text-gray-900 dark:text-white hover:text-[#17408B] dark:hover:text-blue-400 transition-colors"
+                            className="font-semibold text-slate-900 transition-colors hover:text-[#1D428A] dark:text-white dark:hover:text-slate-100"
                           >
                             {prospect.player.displayName}
                           </Link>
                         </td>
-                        <td className="px-3 py-3 text-gray-700 dark:text-gray-300">{prospect.player.position ?? "-"}</td>
+                        <td className="px-3 py-3 text-slate-700 dark:text-slate-200">{prospect.player.position ?? "-"}</td>
                         <td className="px-3 py-3">
-                          <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                             {prospect.school.logo ? (
                               <Image
                                 src={prospect.school.logo}
@@ -306,7 +312,7 @@ export default async function DraftYearPage({ params }: Props) {
                             <span>{prospect.school.displayName}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-gray-600 dark:text-gray-400">
+                        <td className="px-3 py-3 text-slate-600 dark:text-slate-300">
                           {[prospect.height, prospect.weight].filter(Boolean).join(" · ") || "-"}
                         </td>
                       </tr>

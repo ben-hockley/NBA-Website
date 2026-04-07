@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowDown, ArrowDownUp, ArrowUp, Ban, Cross, Users } from "lucide-react";
 import type { Athlete } from "@/lib/types";
 
 type View = "info" | "stats";
@@ -77,8 +78,12 @@ function sorted(athletes: Athlete[], { col, dir }: SortState): Athlete[] {
 }
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span className="ml-1 text-gray-300 dark:text-gray-600">↕</span>;
-  return <span className="ml-1">{dir === "asc" ? "↑" : "↓"}</span>;
+  if (!active) {
+    return <ArrowDownUp className="ml-1 inline h-3.5 w-3.5 text-slate-300 dark:text-slate-500" />;
+  }
+  return dir === "asc"
+    ? <ArrowUp className="ml-1 inline h-3.5 w-3.5" />
+    : <ArrowDown className="ml-1 inline h-3.5 w-3.5" />;
 }
 
 interface HeadProps {
@@ -91,12 +96,34 @@ interface HeadProps {
 function Th({ col, sort, onSort, className = "", children }: HeadProps) {
   return (
     <th
-      className={`px-3 py-3 cursor-pointer select-none whitespace-nowrap hover:text-gray-800 dark:hover:text-gray-200 transition-colors ${className}`}
+      className={`cursor-pointer select-none whitespace-nowrap px-3 py-3 transition-colors hover:text-[#1D428A] dark:hover:text-white ${className}`}
       onClick={() => onSort(col)}
     >
       {children}
       <SortIcon active={sort.col === col} dir={sort.dir} />
     </th>
+  );
+}
+
+function AvailabilityBadge({ athlete }: { athlete: Athlete }) {
+  if (!athlete.availability) return null;
+
+  const tooltip = athlete.availability.detail
+    ? `${athlete.availability.label}: ${athlete.availability.detail}`
+    : athlete.availability.label;
+
+  if (athlete.availability.kind === "suspended") {
+    return (
+      <span title={tooltip} aria-label={tooltip} className="inline-flex items-center" role="img">
+        <Ban className="h-3.5 w-3.5 text-amber-600 dark:text-amber-300" />
+      </span>
+    );
+  }
+
+  return (
+    <span title={tooltip} aria-label={tooltip} className="inline-flex items-center" role="img">
+      <Cross className="h-3.5 w-3.5 text-[#C8102E] dark:text-rose-300" />
+    </span>
   );
 }
 
@@ -120,32 +147,38 @@ export default function RosterTable({ athletes }: { athletes: Athlete[] }) {
 
   const rows = sorted(athletes, sort);
 
-  const thBase = "text-left text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold";
+  const thBase = "text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-300";
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-      {/* Toggle tabs */}
-      <div className="flex border-b border-gray-100 dark:border-gray-700">
-        {(["info", "stats"] as View[]).map((v) => (
-          <button
-            key={v}
-            onClick={() => handleView(v)}
-            className={`px-5 py-3 text-sm font-medium transition-colors ${
-              view === v
-                ? "border-b-2 border-[#17408B] text-[#17408B] dark:text-blue-400 dark:border-blue-400"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-            }`}
-          >
-            {v === "info" ? "Player Info" : "Player Stats"}
-          </button>
-        ))}
+    <div className="overflow-hidden rounded-3xl border border-slate-200/60 bg-white/75 backdrop-blur-xl dark:border-[#1D428A]/45 dark:bg-slate-900/75">
+      <div className="flex items-center justify-between border-b border-slate-200/70 px-4 py-2 dark:border-[#1D428A]/45">
+        <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
+          <Users className="h-4 w-4 text-[#1D428A] dark:text-white" />
+          Team Roster
+        </p>
+
+        <div className="flex items-center gap-1">
+          {(["info", "stats"] as View[]).map((v) => (
+            <button
+              key={v}
+              onClick={() => handleView(v)}
+              className={`border-b-4 px-5 py-3 text-sm font-semibold transition-all duration-200 ${
+                view === v
+                  ? "border-[#1D428A] text-[#1D428A] dark:border-white dark:text-white"
+                  : "border-transparent text-slate-500 hover:text-[#1D428A] dark:text-slate-300 dark:hover:text-white"
+              }`}
+            >
+              {v === "info" ? "Player Info" : "Player Stats"}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="overflow-x-auto">
         {view === "info" ? (
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-700/50">
+              <tr className="bg-slate-50/85 dark:bg-[#1D428A]/20">
                 <Th col="jersey" sort={sort} onSort={handleSort} className={`${thBase} pl-4 w-14`}>#</Th>
                 <Th col="name"   sort={sort} onSort={handleSort} className={thBase}>Player</Th>
                 <Th col="position" sort={sort} onSort={handleSort} className={`${thBase} text-center hidden sm:table-cell`}>POS</Th>
@@ -156,10 +189,10 @@ export default function RosterTable({ athletes }: { athletes: Athlete[] }) {
                 <Th col="college"  sort={sort} onSort={handleSort} className={`${thBase} hidden xl:table-cell`}>COLLEGE</Th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody className="divide-y divide-slate-200/60 dark:divide-[#1D428A]/35">
               {rows.map((athlete) => (
-                <tr key={athlete.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                  <td className="pl-4 px-3 py-3 font-mono text-gray-500 text-xs">{athlete.jersey ?? "–"}</td>
+                <tr key={athlete.id} className="transition-all duration-200 hover:bg-slate-50 dark:hover:bg-[#1D428A]/20">
+                  <td className="pl-4 px-3 py-3 font-mono text-xs text-slate-500">{athlete.jersey ?? "–"}</td>
                   <td className="px-3 py-3">
                     <Link href={`/players/${athlete.id}`} className="flex items-center gap-3 group">
                       {athlete.headshot ? (
@@ -167,35 +200,38 @@ export default function RosterTable({ athletes }: { athletes: Athlete[] }) {
                           src={athlete.headshot}
                           alt={athlete.displayName}
                           width={36} height={36}
-                          className="rounded-full object-cover bg-gray-100 dark:bg-gray-700 shrink-0"
+                          className="shrink-0 rounded-full border border-slate-200/70 bg-slate-100 object-cover dark:border-[#1D428A]/40 dark:bg-slate-700"
                           unoptimized
                         />
                       ) : (
-                        <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-500 dark:bg-slate-600 dark:text-slate-100">
                           {athlete.displayName.slice(0, 1)}
                         </div>
                       )}
-                      <span className="font-medium text-gray-900 dark:text-white group-hover:text-[#17408B] dark:group-hover:text-blue-400 transition-colors">
-                        {athlete.fullName}
+                      <span className="inline-flex min-w-0 items-center gap-1.5">
+                        <span className="truncate font-semibold text-slate-900 transition-colors group-hover:text-[#1D428A] dark:text-white dark:group-hover:text-slate-100">
+                          {athlete.fullName}
+                        </span>
+                        <AvailabilityBadge athlete={athlete} />
                       </span>
                     </Link>
                   </td>
                   <td className="px-3 py-3 text-center hidden sm:table-cell">
-                    <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                    <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-[#1D428A]/30 dark:text-white">
                       {athlete.position?.abbreviation ?? "–"}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-center hidden md:table-cell text-gray-600 dark:text-gray-400">{athlete.height ?? "–"}</td>
-                  <td className="px-3 py-3 text-center hidden md:table-cell text-gray-600 dark:text-gray-400">
+                  <td className="hidden px-3 py-3 text-center text-slate-600 dark:text-slate-300 md:table-cell">{athlete.height ?? "–"}</td>
+                  <td className="hidden px-3 py-3 text-center text-slate-600 dark:text-slate-300 md:table-cell">
                     {athlete.weight ? `${athlete.weight} lbs` : "–"}
                   </td>
-                  <td className="px-3 py-3 text-center hidden lg:table-cell text-gray-600 dark:text-gray-400">{athlete.age ?? "–"}</td>
-                  <td className="px-3 py-3 text-center hidden lg:table-cell text-gray-600 dark:text-gray-400">
+                  <td className="hidden px-3 py-3 text-center text-slate-600 dark:text-slate-300 lg:table-cell">{athlete.age ?? "–"}</td>
+                  <td className="hidden px-3 py-3 text-center text-slate-600 dark:text-slate-300 lg:table-cell">
                     {athlete.experience !== undefined
                       ? athlete.experience.years === 0 ? "Rookie" : `${athlete.experience.years}yr`
                       : "–"}
                   </td>
-                  <td className="px-3 py-3 hidden xl:table-cell text-gray-500 dark:text-gray-400 text-xs">{athlete.college?.name ?? "–"}</td>
+                  <td className="hidden px-3 py-3 text-xs text-slate-500 dark:text-slate-300 xl:table-cell">{athlete.college?.name ?? "–"}</td>
                 </tr>
               ))}
             </tbody>
@@ -203,7 +239,7 @@ export default function RosterTable({ athletes }: { athletes: Athlete[] }) {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-700/50">
+              <tr className="bg-slate-50/85 dark:bg-[#1D428A]/20">
                 <Th col="jersey"   sort={sort} onSort={handleSort} className={`${thBase} pl-4 w-14`}>#</Th>
                 <Th col="name"     sort={sort} onSort={handleSort} className={thBase}>Player</Th>
                 <Th col="position" sort={sort} onSort={handleSort} className={`${thBase} text-center hidden sm:table-cell`}>POS</Th>
@@ -215,10 +251,10 @@ export default function RosterTable({ athletes }: { athletes: Athlete[] }) {
                 <Th col="fgPct"    sort={sort} onSort={handleSort} className={`${thBase} text-center`}>FG%</Th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody className="divide-y divide-slate-200/60 dark:divide-[#1D428A]/35">
               {rows.map((athlete) => (
-                <tr key={athlete.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                  <td className="pl-4 px-3 py-3 font-mono text-gray-500 text-xs">{athlete.jersey ?? "–"}</td>
+                <tr key={athlete.id} className="transition-all duration-200 hover:bg-slate-50 dark:hover:bg-[#1D428A]/20">
+                  <td className="pl-4 px-3 py-3 font-mono text-xs text-slate-500">{athlete.jersey ?? "–"}</td>
                   <td className="px-3 py-3">
                     <Link href={`/players/${athlete.id}`} className="flex items-center gap-3 group">
                       {athlete.headshot ? (
@@ -226,30 +262,33 @@ export default function RosterTable({ athletes }: { athletes: Athlete[] }) {
                           src={athlete.headshot}
                           alt={athlete.displayName}
                           width={36} height={36}
-                          className="rounded-full object-cover bg-gray-100 dark:bg-gray-700 shrink-0"
+                          className="shrink-0 rounded-full border border-slate-200/70 bg-slate-100 object-cover dark:border-[#1D428A]/40 dark:bg-slate-700"
                           unoptimized
                         />
                       ) : (
-                        <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-500 dark:bg-slate-600 dark:text-slate-100">
                           {athlete.displayName.slice(0, 1)}
                         </div>
                       )}
-                      <span className="font-medium text-gray-900 dark:text-white group-hover:text-[#17408B] dark:group-hover:text-blue-400 transition-colors">
-                        {athlete.fullName}
+                      <span className="inline-flex min-w-0 items-center gap-1.5">
+                        <span className="truncate font-semibold text-slate-900 transition-colors group-hover:text-[#1D428A] dark:text-white dark:group-hover:text-slate-100">
+                          {athlete.fullName}
+                        </span>
+                        <AvailabilityBadge athlete={athlete} />
                       </span>
                     </Link>
                   </td>
                   <td className="px-3 py-3 text-center hidden sm:table-cell">
-                    <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                    <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-[#1D428A]/30 dark:text-white">
                       {athlete.position?.abbreviation ?? "–"}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-center font-medium text-gray-800 dark:text-gray-200">{athlete.stats?.gp ?? "–"}</td>
-                  <td className="px-3 py-3 text-center font-medium text-gray-800 dark:text-gray-200">{athlete.stats?.mpg ?? "–"}</td>
-                  <td className="px-3 py-3 text-center font-medium text-gray-800 dark:text-gray-200">{athlete.stats?.ppg ?? "–"}</td>
-                  <td className="px-3 py-3 text-center font-medium text-gray-800 dark:text-gray-200">{athlete.stats?.rpg ?? "–"}</td>
-                  <td className="px-3 py-3 text-center font-medium text-gray-800 dark:text-gray-200">{athlete.stats?.apg ?? "–"}</td>
-                  <td className="px-3 py-3 text-center font-medium text-gray-800 dark:text-gray-200">{athlete.stats?.fgPct ?? "–"}</td>
+                  <td className="px-3 py-3 text-center font-semibold text-slate-800 dark:text-slate-100">{athlete.stats?.gp ?? "–"}</td>
+                  <td className="px-3 py-3 text-center font-semibold text-slate-800 dark:text-slate-100">{athlete.stats?.mpg ?? "–"}</td>
+                  <td className="px-3 py-3 text-center font-semibold text-slate-800 dark:text-slate-100">{athlete.stats?.ppg ?? "–"}</td>
+                  <td className="px-3 py-3 text-center font-semibold text-slate-800 dark:text-slate-100">{athlete.stats?.rpg ?? "–"}</td>
+                  <td className="px-3 py-3 text-center font-semibold text-slate-800 dark:text-slate-100">{athlete.stats?.apg ?? "–"}</td>
+                  <td className="px-3 py-3 text-center font-semibold text-slate-800 dark:text-slate-100">{athlete.stats?.fgPct ?? "–"}</td>
                 </tr>
               ))}
             </tbody>

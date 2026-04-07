@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { StatCategory } from "@/lib/types";
+import { BarChart3 } from "lucide-react";
 
 export default function StatLeadersTabs({ categories }: { categories: StatCategory[] }) {
   const [activeKey, setActiveKey] = useState(categories[0]?.key ?? "");
@@ -13,151 +14,148 @@ export default function StatLeadersTabs({ categories }: { categories: StatCatego
   const leaders = mode === "pg" ? active?.leaders : active?.totalLeaders;
   const colHeader = mode === "pg" ? active?.shortName : active?.totalShortName;
 
+  if (!active || !leaders) return null;
+
   return (
-    <div>
-      {/* Stat category tabs + mode toggle in same row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        {/* Stat tabs */}
-        <div className="flex flex-wrap gap-2">
-          {categories.map((cat) => (
+    <div className="space-y-4">
+      <section className="rounded-3xl border border-slate-200/60 bg-white/75 p-4 backdrop-blur-xl dark:border-[#1D428A]/45 dark:bg-slate-900/75">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            {categories.map((cat) => (
+              <button
+                key={cat.key}
+                onClick={() => setActiveKey(cat.key)}
+                className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+                  cat.key === activeKey
+                    ? "border-[#1D428A] bg-[#1D428A] text-white"
+                    : "border-slate-200/70 bg-white/80 text-slate-600 hover:scale-[1.02] hover:border-[#1D428A] hover:text-[#1D428A] dark:border-[#1D428A]/45 dark:bg-slate-900/75 dark:text-slate-200"
+                }`}
+              >
+                {cat.shortName}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex rounded-full border border-slate-200/70 bg-white/80 p-1 dark:border-[#1D428A]/45 dark:bg-slate-900/75">
             <button
-              key={cat.key}
-              onClick={() => setActiveKey(cat.key)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-                cat.key === activeKey
-                  ? "bg-[#C9082A] text-white"
-                  : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => setMode("pg")}
+              className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-200 ${
+                mode === "pg"
+                  ? "bg-[#1D428A] text-white"
+                  : "text-slate-500 hover:text-[#1D428A] dark:text-slate-300 dark:hover:text-white"
               }`}
             >
-              {cat.shortName}
+              Per Game
             </button>
-          ))}
-        </div>
-
-        {/* Per game / Totals toggle */}
-        <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shrink-0">
-          <button
-            onClick={() => setMode("pg")}
-            className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
-              mode === "pg"
-                ? "bg-[#17408B] text-white"
-                : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-            }`}
-          >
-            Per Game
-          </button>
-          <button
-            onClick={() => setMode("tot")}
-            className={`px-3 py-1.5 text-xs font-semibold transition-colors border-l border-gray-200 dark:border-gray-700 ${
-              mode === "tot"
-                ? "bg-[#17408B] text-white"
-                : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-            }`}
-          >
-            Totals
-          </button>
-        </div>
-      </div>
-
-      {/* Category heading */}
-      {active && leaders && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-            {active.displayName} Leaders
-            <span className="ml-2 text-sm font-normal text-gray-400 dark:text-gray-500">
-              {mode === "pg" ? "Per Game" : "Season Totals"}
-            </span>
-          </h2>
-
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  <th className="px-4 py-3 text-left w-10">#</th>
-                  <th className="px-4 py-3 text-left">Player</th>
-                  <th className="px-4 py-3 text-left hidden sm:table-cell">Team</th>
-                  <th className="px-4 py-3 text-right">{colHeader}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaders.map((entry) => (
-                  <tr
-                    key={entry.playerId}
-                    className="border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
-                  >
-                    {/* Rank */}
-                    <td className="px-4 py-3 text-gray-400 dark:text-gray-500 font-mono text-xs w-10">
-                      {entry.rank === 1 ? (
-                        <span className="text-yellow-500 font-bold text-sm">1</span>
-                      ) : (
-                        entry.rank
-                      )}
-                    </td>
-
-                    {/* Player */}
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/players/${entry.playerId}`}
-                        className="flex items-center gap-3 group"
-                      >
-                        <div className="relative w-9 h-9 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 shrink-0 border-2 border-transparent group-hover:border-[#C9082A] transition-colors">
-                          {entry.headshot ? (
-                            <Image
-                              src={entry.headshot}
-                              alt={entry.playerName}
-                              fill
-                              className="object-cover object-top"
-                              sizes="36px"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold">
-                              {entry.playerName.charAt(0)}
-                            </div>
-                          )}
-                        </div>
-                        <span className="font-medium text-gray-900 dark:text-white group-hover:text-[#C9082A] transition-colors">
-                          {entry.playerName}
-                        </span>
-                      </Link>
-                    </td>
-
-                    {/* Team */}
-                    <td className="px-4 py-3 hidden sm:table-cell">
-                      <div className="flex items-center gap-2">
-                        {entry.teamLogo && (
-                          <Image
-                            src={entry.teamLogo}
-                            alt={entry.teamAbbreviation}
-                            width={22}
-                            height={22}
-                            className="object-contain"
-                          />
-                        )}
-                        <span className="text-gray-500 dark:text-gray-400 text-xs font-medium">
-                          {entry.teamAbbreviation}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Value */}
-                    <td className="px-4 py-3 text-right">
-                      <span
-                        className={`text-base font-bold ${
-                          entry.rank === 1
-                            ? "text-[#C9082A]"
-                            : "text-gray-900 dark:text-white"
-                        }`}
-                      >
-                        {entry.value}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <button
+              onClick={() => setMode("tot")}
+              className={`rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition-all duration-200 ${
+                mode === "tot"
+                  ? "bg-[#1D428A] text-white"
+                  : "text-slate-500 hover:text-[#1D428A] dark:text-slate-300 dark:hover:text-white"
+              }`}
+            >
+              Totals
+            </button>
           </div>
         </div>
-      )}
+
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="inline-flex items-center gap-2 text-lg font-black tracking-tight text-slate-900 dark:text-white">
+            <BarChart3 className="h-5 w-5 text-[#1D428A] dark:text-white" />
+            {active.displayName} Leaders
+          </h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
+            {mode === "pg" ? "Per Game" : "Season Totals"}
+          </p>
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-3xl border border-slate-200/60 bg-white/75 backdrop-blur-xl dark:border-[#1D428A]/45 dark:bg-slate-900/75">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200/70 bg-slate-50/85 text-xs uppercase tracking-[0.16em] text-slate-500 dark:border-[#1D428A]/45 dark:bg-[#1D428A]/25 dark:text-slate-300">
+                <th className="w-10 px-4 py-3 text-left">#</th>
+                <th className="px-4 py-3 text-left">Player</th>
+                <th className="hidden px-4 py-3 text-left sm:table-cell">Team</th>
+                <th className="px-4 py-3 text-right">{colHeader}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaders.map((entry) => (
+                <tr
+                  key={entry.playerId}
+                  className="border-b border-slate-200/50 transition-all duration-200 last:border-0 hover:bg-slate-50 dark:border-[#1D428A]/35 dark:hover:bg-[#1D428A]/20"
+                >
+                  <td className="w-10 px-4 py-3 text-xs font-semibold text-slate-400">
+                    {entry.rank === 1 ? (
+                      <span className="text-sm font-black text-[#C8102E]">1</span>
+                    ) : (
+                      entry.rank
+                    )}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/players/${entry.playerId}`}
+                      className="group flex items-center gap-3"
+                    >
+                      <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-slate-200/70 bg-slate-100 transition-all duration-200 group-hover:border-[#C8102E] dark:border-[#1D428A]/45 dark:bg-slate-800/80">
+                        {entry.headshot ? (
+                          <Image
+                            src={entry.headshot}
+                            alt={entry.playerName}
+                            fill
+                            className="object-cover object-top"
+                            sizes="36px"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-xs font-bold text-slate-400">
+                            {entry.playerName.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <span className="font-semibold text-slate-900 transition-colors group-hover:text-[#C8102E] dark:text-white">
+                        {entry.playerName}
+                      </span>
+                    </Link>
+                  </td>
+
+                  <td className="hidden px-4 py-3 sm:table-cell">
+                    <div className="flex items-center gap-2">
+                      {entry.teamLogo && (
+                        <Image
+                          src={entry.teamLogo}
+                          alt={entry.teamAbbreviation}
+                          width={22}
+                          height={22}
+                          className="object-contain"
+                        />
+                      )}
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
+                        {entry.teamAbbreviation}
+                      </span>
+                    </div>
+                  </td>
+
+                  <td className="px-4 py-3 text-right">
+                    <span
+                      className={`text-base font-black ${
+                        entry.rank === 1
+                          ? "text-[#C8102E]"
+                          : "text-slate-900 dark:text-white"
+                      }`}
+                    >
+                      {entry.value}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

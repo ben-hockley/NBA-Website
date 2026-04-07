@@ -1,29 +1,43 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ChevronRight, Clock3 } from "lucide-react";
 import type { Game } from "@/lib/types";
 
 function statusBadge(game: Game) {
   const { state, shortDetail, description } = game.status.type;
   if (state === "in") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500 text-white animate-pulse">
-        <span className="w-1.5 h-1.5 rounded-full bg-white inline-block" />
+      <span className="inline-flex items-center gap-1 rounded-full bg-[#C8102E] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
+        <span className="h-1.5 w-1.5 rounded-full bg-white" />
         {shortDetail || "LIVE"}
       </span>
     );
   }
   if (state === "post") {
     return (
-      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+      <span className="rounded-full bg-slate-200 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-700 dark:bg-slate-700 dark:text-slate-100">
         {description || "Final"}
       </span>
     );
   }
   return (
-    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+    <span className="rounded-full bg-[#1D428A]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[#1D428A] dark:bg-[#1D428A]/45 dark:text-white">
       {shortDetail}
     </span>
   );
+}
+
+function formatTipTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "TBD";
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatContributorValue(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 export default function GameCard({ game }: { game: Game }) {
@@ -41,62 +55,109 @@ export default function GameCard({ game }: { game: Game }) {
     <Link
       href={`/games/${game.id}`}
       aria-label={`View game details: ${away.team.displayName} at ${home.team.displayName}`}
-      className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#17408B] focus-visible:ring-offset-2"
+      className="group block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1D428A] focus-visible:ring-offset-2"
     >
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 flex flex-col gap-3 transition-all hover:shadow-md hover:-translate-y-0.5">
-        {/* Status */}
-        <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
-          {game.venue && (
-            <span>{game.venue.fullName}, {game.venue.address.city}</span>
-          )}
-          <span className="ml-auto">{statusBadge(game)}</span>
-        </div>
-
-        {/* Teams & Score */}
-        <div className="flex flex-col gap-2">
-          {[
-            { competitor: away, won: awayWon },
-            { competitor: home, won: homeWon },
-          ].map(({ competitor, won }) => (
-            <div key={competitor.id} className={`flex items-center gap-3 ${won ? "font-semibold" : ""}`}>
-              {competitor.team.logo ? (
-                <Image
-                  src={competitor.team.logo}
-                  alt={competitor.team.abbreviation}
-                  width={32}
-                  height={32}
-                  className="object-contain"
-                  unoptimized
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
-                  {competitor.team.abbreviation.slice(0, 2)}
-                </div>
-              )}
-              <span className="flex-1 text-sm">
-                {competitor.team.displayName}
-                {competitor.records?.[0] && (
-                  <span className="ml-1 text-xs text-gray-400">
-                    ({competitor.records[0].summary})
-                  </span>
-                )}
+      <article className="rounded-2xl border border-slate-200/60 bg-white/75 p-4 backdrop-blur-xl transition-all duration-200 hover:scale-[1.01] hover:bg-slate-50 dark:border-[#1D428A]/45 dark:bg-slate-900/75 dark:hover:bg-[#1D428A]/25">
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-300">
+              <span className="inline-flex items-center gap-1">
+                <Clock3 className="h-3.5 w-3.5" />
+                {formatTipTime(game.date)}
               </span>
-              {(isLive || isFinal) && (
-                <span className={`text-xl font-bold tabular-nums ${won ? "text-gray-900 dark:text-white" : "text-gray-500 dark:text-gray-400"}`}>
-                  {competitor.score}
+              {game.venue && (
+                <span className="truncate">
+                  {game.venue.address.city ? `${game.venue.address.city} - ` : ""}
+                  {game.venue.fullName}
                 </span>
               )}
+              <span className="ml-auto">{statusBadge(game)}</span>
             </div>
-          ))}
-        </div>
 
-        {/* Period info for live games */}
-        {isLive && game.status.period && (
-          <p className="text-xs text-gray-400 text-center">
-            {game.status.displayClock} - Q{game.status.period}
-          </p>
-        )}
-      </div>
+            <div className="space-y-2">
+              {[
+                { competitor: away, won: awayWon },
+                { competitor: home, won: homeWon },
+              ].map(({ competitor, won }) => {
+                const contributor = (isLive || isFinal)
+                  ? game.topContributors?.find((entry) => entry.teamId === competitor.team.id)?.contributor
+                  : undefined;
+
+                return (
+                  <div key={competitor.id} className="rounded-xl px-2 py-1.5 transition-all duration-200 group-hover:bg-white/60 dark:group-hover:bg-slate-800/60">
+                    <div className="flex items-center gap-3">
+                      {competitor.team.logo ? (
+                        <Image
+                          src={competitor.team.logo}
+                          alt={competitor.team.abbreviation}
+                          width={30}
+                          height={30}
+                          className="h-[30px] w-[30px] object-contain"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-100">
+                          {competitor.team.abbreviation.slice(0, 2)}
+                        </div>
+                      )}
+                      <span className={`min-w-0 flex-1 truncate text-sm ${won ? "font-semibold text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-200"}`}>
+                        {competitor.team.displayName}
+                      </span>
+                      {(isLive || isFinal) ? (
+                        <span className={`text-2xl font-black tabular-nums ${won ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-300"}`}>
+                          {competitor.score}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">vs</span>
+                      )}
+                    </div>
+
+                    {contributor && (
+                      <div className="ml-[42px] mt-1.5 flex items-center gap-2 rounded-lg border border-slate-200/60 bg-slate-50/80 px-2 py-1 dark:border-[#1D428A]/40 dark:bg-slate-800/60">
+                        {contributor.headshot ? (
+                          <Image
+                            src={contributor.headshot}
+                            alt={contributor.athleteName}
+                            width={28}
+                            height={28}
+                            className="h-7 w-7 rounded-full object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-100">
+                            {contributor.athleteName.slice(0, 1)}
+                          </div>
+                        )}
+
+                        <div className="min-w-0">
+                          <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-300">
+                            {competitor.team.shortDisplayName} Leader
+                          </p>
+                          <p className="truncate text-[11px] font-semibold text-slate-700 dark:text-slate-100">
+                            {contributor.athleteName}
+                            {contributor.position ? ` · ${contributor.position}` : ""}
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-300">
+                            {formatContributorValue(contributor.points)} PTS · {formatContributorValue(contributor.rebounds)} REB · {formatContributorValue(contributor.assists)} AST
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {isLive && game.status.period && (
+              <p className="text-xs font-medium text-[#C8102E]">
+                {game.status.displayClock} - Q{game.status.period}
+              </p>
+            )}
+          </div>
+
+          <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#1D428A] dark:text-slate-400" />
+        </div>
+      </article>
     </Link>
   );
 }

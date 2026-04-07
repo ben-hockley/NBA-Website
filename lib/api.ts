@@ -1,12 +1,15 @@
 import { unstable_noStore } from "next/cache";
 import type {
   Game,
+  GameTopContributor,
   GameDetail,
   GameStatus,
   StandingsGroup,
   NBATeam,
   TeamOverview,
+  TeamGameTopContributor,
   TeamRecentResult,
+  TeamSeasonContributor,
   Athlete,
   PlayerDetail,
   PlayerStats,
@@ -255,6 +258,123 @@ function parseGame(event: any): Game {
   };
 }
 
+function parseStatNumber(value: unknown): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value !== "string") return 0;
+  const parsed = Number.parseFloat(value.replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeStatToken(value: string | undefined): string {
+  return (value ?? "").toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function findBoxScoreStatIndex(
+  columns: Array<{ key?: string; label?: string }>,
+  aliases: string[]
+): number {
+  const aliasSet = new Set(aliases.map((alias) => normalizeStatToken(alias)));
+  return columns.findIndex((column) => {
+    const key = normalizeStatToken(column.key);
+    const label = normalizeStatToken(column.label);
+    return aliasSet.has(key) || aliasSet.has(label);
+  });
+}
+
+function isBetterContributor(candidate: GameTopContributor, current: GameTopContributor | undefined): boolean {
+  if (!current) return true;
+  if (candidate.impact !== current.impact) return candidate.impact > current.impact;
+  if (candidate.points !== current.points) return candidate.points > current.points;
+  if (candidate.rebounds !== current.rebounds) return candidate.rebounds > current.rebounds;
+  if (candidate.assists !== current.assists) return candidate.assists > current.assists;
+  return candidate.athleteName.localeCompare(current.athleteName) < 0;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractTeamTopContributorFromSummary(entry: any): { teamId: string; contributor?: GameTopContributor } | null {
+  const teamId = String(entry?.team?.id ?? "");
+  if (!teamId) return null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const statGroup: any = entry?.statistics?.[0] ?? {};
+  const keys: string[] = statGroup.keys ?? [];
+  const labels: string[] = statGroup.labels ?? [];
+  const columns = keys.map((key, index) => ({ key, label: labels[index] ?? key }));
+
+  const pointsIndex = findBoxScoreStatIndex(columns, ["pts", "points"]);
+  const reboundsIndex = findBoxScoreStatIndex(columns, ["reb", "rebs", "rebounds"]);
+  const assistsIndex = findBoxScoreStatIndex(columns, ["ast", "assists"]);
+
+  let bestContributor: GameTopContributor | undefined;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const athletes: any[] = statGroup.athletes ?? [];
+  athletes.forEach((player) => {
+    if (player?.didNotPlay) return;
+
+    const stats: unknown[] = Array.isArray(player?.stats) ? player.stats : [];
+    const points = pointsIndex >= 0 ? parseStatNumber(stats[pointsIndex]) : 0;
+    const rebounds = reboundsIndex >= 0 ? parseStatNumber(stats[reboundsIndex]) : 0;
+    const assists = assistsIndex >= 0 ? parseStatNumber(stats[assistsIndex]) : 0;
+    const impact = points + rebounds + assists;
+
+    const athleteName = player?.athlete?.displayName ?? "Unknown";
+    const candidate: GameTopContributor = {
+      athleteId: String(player?.athlete?.id ?? ""),
+      athleteName,
+      headshot: player?.athlete?.headshot?.href,
+      position: player?.athlete?.position?.abbreviation,
+      points,
+      rebounds,
+      assists,
+      impact,
+    };
+
+    if (isBetterContributor(candidate, bestContributor)) {
+      bestContributor = candidate;
+    }
+  });
+
+  return {
+    teamId,
+    contributor: bestContributor,
+  };
+}
+
+async function fetchGameTopContributors(gameId: string): Promise<Record<string, GameTopContributor>> {
+  const res = await fetch(`${ESPN_BASE}/summary?event=${gameId}`, {
+    next: { revalidate: 60 },
+  });
+  if (!res.ok) throw new Error(`Game summary fetch failed: ${res.status}`);
+
+  const data = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const teams: any[] = data.boxscore?.players ?? [];
+
+  const contributorsByTeam: Record<string, GameTopContributor> = {};
+  teams.forEach((entry) => {
+    const parsed = extractTeamTopContributorFromSummary(entry);
+    if (!parsed?.contributor) return;
+    contributorsByTeam[parsed.teamId] = parsed.contributor;
+  });
+
+  return contributorsByTeam;
+}
+
+function mapTopContributorsToCompetitors(
+  competitors: Game["competitors"],
+  contributorsByTeam: Record<string, GameTopContributor>
+): TeamGameTopContributor[] | undefined {
+  const topContributors = competitors
+    .map((competitor) => ({
+      teamId: competitor.team.id,
+      contributor: contributorsByTeam[competitor.team.id],
+    }))
+    .filter((entry) => Boolean(entry.contributor));
+
+  return topContributors.length ? topContributors : undefined;
+}
+
 export async function fetchScoreboard(date?: string): Promise<Game[]> {
   const url = date
     ? `${ESPN_BASE}/scoreboard?dates=${date}`
@@ -262,7 +382,30 @@ export async function fetchScoreboard(date?: string): Promise<Game[]> {
   const res = await fetch(url, { next: { revalidate: 60 } });
   if (!res.ok) throw new Error(`Scoreboard fetch failed: ${res.status}`);
   const data = await res.json();
-  return (data.events ?? []).map(parseGame);
+
+  const games: Game[] = (data.events ?? []).map(parseGame);
+  const playedGames = games.filter((game) => {
+    const state = game.status.type.state;
+    return state === "in" || state === "post";
+  });
+
+  const contributorResults = await Promise.allSettled(
+    playedGames.map((game) => fetchGameTopContributors(game.id))
+  );
+
+  const contributorsByGameId = new Map<string, Record<string, GameTopContributor>>();
+  contributorResults.forEach((result, index) => {
+    if (result.status !== "fulfilled") return;
+    contributorsByGameId.set(playedGames[index].id, result.value);
+  });
+
+  return games.map((game) => {
+    const contributorsByTeam = contributorsByGameId.get(game.id);
+    if (!contributorsByTeam) return game;
+
+    const topContributors = mapTopContributorsToCompetitors(game.competitors, contributorsByTeam);
+    return topContributors ? { ...game, topContributors } : game;
+  });
 }
 
 export async function fetchGameDetails(gameId: string): Promise<GameDetail> {
@@ -609,7 +752,7 @@ export async function fetchTeamRecentResults(teamId: string, limit = 10): Promis
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const events: any[] = data.events ?? [];
-  return events
+  const completedGames = events
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((event: any): TeamRecentResult | null => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -651,6 +794,158 @@ export async function fetchTeamRecentResults(teamId: string, limit = 10): Promis
     .filter((game): game is TeamRecentResult => game !== null)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, limit);
+
+  const contributorResults = await Promise.allSettled(
+    completedGames.map((game) => fetchGameTopContributors(game.gameId))
+  );
+
+  return completedGames.map((game, index) => {
+    const contributorResult = contributorResults[index];
+    if (contributorResult.status !== "fulfilled") return game;
+
+    const topContributors: TeamGameTopContributor[] = [
+      { teamId, contributor: contributorResult.value[teamId] },
+      { teamId: game.opponent.id, contributor: contributorResult.value[game.opponent.id] },
+    ].filter((entry) => Boolean(entry.contributor));
+
+    return topContributors.length ? { ...game, topContributors } : game;
+  });
+}
+
+export async function fetchTeamSeasonContributorLeaders(limitPerTeam = 3): Promise<Record<string, TeamSeasonContributor[]>> {
+  const pageLimit = 100;
+  const baseUrl = `${BY_ATHLETE_BASE}?season=2026&seasontype=2&limit=${pageLimit}&sort=offensive.avgPoints:desc`;
+
+  const res = await fetch(baseUrl, { next: { revalidate: 3600 } });
+  if (!res.ok) throw new Error(`Team contributor fetch failed: ${res.status}`);
+
+  const data = await res.json();
+  const totalPages = Number(data.pagination?.pages ?? 1);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allAthletes: any[] = [...(data.athletes ?? [])];
+
+  if (totalPages > 1) {
+    const remainingPages = Array.from({ length: totalPages - 1 }, (_, index) => index + 2);
+    const pageResults = await Promise.allSettled(
+      remainingPages.map((page) =>
+        fetch(`${baseUrl}&page=${page}`, { next: { revalidate: 3600 } }).then((response) => {
+          if (!response.ok) {
+            throw new Error(`Team contributor page fetch failed: ${response.status}`);
+          }
+          return response.json();
+        })
+      )
+    );
+
+    pageResults.forEach((pageResult) => {
+      if (pageResult.status !== "fulfilled") return;
+      allAthletes.push(...(pageResult.value.athletes ?? []));
+    });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const athletes: any[] = allAthletes;
+
+  const byTeam = new Map<string, TeamSeasonContributor[]>();
+
+  athletes.forEach((entry) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const athlete: any = entry?.athlete ?? {};
+    const teamId = String(athlete.teamId ?? "");
+    if (!teamId) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const categories: any[] = entry?.categories ?? [];
+    const generalTotals: unknown[] = categories[0]?.totals ?? [];
+    const offensiveTotals: unknown[] = categories[1]?.totals ?? [];
+
+    const gamesPlayed = parseStatNumber(generalTotals[0]);
+    if (gamesPlayed <= 10) return;
+
+    const ppg = parseStatNumber(offensiveTotals[0]);
+    const rpg = parseStatNumber(generalTotals[11]);
+    const apg = parseStatNumber(offensiveTotals[10]);
+    const impact = ppg + rpg + apg;
+
+    const contributor: TeamSeasonContributor = {
+      athleteId: String(athlete.id ?? ""),
+      athleteName: athlete.displayName ?? "Unknown",
+      headshot: athlete.headshot?.href,
+      position: athlete.position?.abbreviation,
+      ppg,
+      rpg,
+      apg,
+      impact,
+    };
+
+    const teamContributors = byTeam.get(teamId) ?? [];
+    teamContributors.push(contributor);
+    byTeam.set(teamId, teamContributors);
+  });
+
+  const safeLimit = Math.max(1, limitPerTeam);
+  const result: Record<string, TeamSeasonContributor[]> = {};
+
+  byTeam.forEach((contributors, teamId) => {
+    result[teamId] = [...contributors]
+      .sort((a, b) => {
+        if (b.impact !== a.impact) return b.impact - a.impact;
+        if (b.ppg !== a.ppg) return b.ppg - a.ppg;
+        if (b.rpg !== a.rpg) return b.rpg - a.rpg;
+        if (b.apg !== a.apg) return b.apg - a.apg;
+        return a.athleteName.localeCompare(b.athleteName);
+      })
+      .slice(0, safeLimit);
+  });
+
+  return result;
+}
+
+export async function fetchTeamTopSeasonContributors(teamId: string, limit = 3): Promise<TeamSeasonContributor[]> {
+  const safeLimit = Math.max(1, limit);
+
+  // Prefer team roster/overview stats since this feed is the most complete for team pages.
+  const { athletes } = await fetchRoster(teamId);
+  const rosterContributors = athletes
+    .map((athlete) => {
+      const gamesPlayed = parseStatNumber(athlete.stats?.gp);
+      const ppg = parseStatNumber(athlete.stats?.ppg);
+      const rpg = parseStatNumber(athlete.stats?.rpg);
+      const apg = parseStatNumber(athlete.stats?.apg);
+
+      return {
+        gamesPlayed,
+        contributor: {
+          athleteId: athlete.id,
+          athleteName: athlete.displayName,
+          headshot: athlete.headshot,
+          position: athlete.position?.abbreviation,
+          ppg,
+          rpg,
+          apg,
+          impact: ppg + rpg + apg,
+        } as TeamSeasonContributor,
+      };
+    })
+    .filter((entry) => entry.gamesPlayed > 10)
+    .sort((a, b) => {
+      if (b.contributor.impact !== a.contributor.impact) return b.contributor.impact - a.contributor.impact;
+      if (b.contributor.ppg !== a.contributor.ppg) return b.contributor.ppg - a.contributor.ppg;
+      if (b.contributor.rpg !== a.contributor.rpg) return b.contributor.rpg - a.contributor.rpg;
+      if (b.contributor.apg !== a.contributor.apg) return b.contributor.apg - a.contributor.apg;
+      return a.contributor.athleteName.localeCompare(b.contributor.athleteName);
+    })
+    .slice(0, safeLimit)
+    .map((entry) => entry.contributor);
+
+  if (rosterContributors.length > 0) {
+    return rosterContributors;
+  }
+
+  // Fallback for cases where roster stats are unavailable.
+  const leadersByTeam = await fetchTeamSeasonContributorLeaders(safeLimit);
+  return leadersByTeam[teamId] ?? [];
 }
 
 // ─── Roster ───────────────────────────────────────────────────────────────────
@@ -681,6 +976,45 @@ export async function fetchRoster(teamId: string): Promise<{ team: NBATeam; athl
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allAthletes: any[] = data.athletes ?? [];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function parseAthleteAvailability(athlete: any): Athlete["availability"] {
+    const statusType = coerceText(athlete?.status?.type)?.toLowerCase() ?? "";
+    const statusName = coerceText(athlete?.status?.name)?.toLowerCase() ?? "";
+    const statusAbbreviation = coerceText(athlete?.status?.abbreviation)?.toLowerCase() ?? "";
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const injuries: any[] = Array.isArray(athlete?.injuries) ? athlete.injuries : [];
+    const firstInjury = injuries[0];
+
+    const injuryStatus = coerceText(firstInjury?.status) ?? undefined;
+    const injuryDetail = coerceText(firstInjury?.detail) ?? undefined;
+    const injuryText = [injuryStatus, injuryDetail, statusType, statusName, statusAbbreviation]
+      .filter((part): part is string => Boolean(part))
+      .join(" ")
+      .toLowerCase();
+
+    const suspended = /suspend|suspension|disciplin/.test(injuryText);
+    if (suspended) {
+      return {
+        kind: "suspended",
+        label: injuryStatus ?? "Suspended",
+        detail: injuryDetail,
+      };
+    }
+
+    const hasInjuryEntry = injuries.length > 0;
+    const inactiveStatus = Boolean(statusType) && statusType !== "active";
+    if (hasInjuryEntry || inactiveStatus) {
+      return {
+        kind: "injured",
+        label: injuryStatus ?? coerceText(athlete?.status?.name) ?? "Unavailable",
+        detail: injuryDetail,
+      };
+    }
+
+    return undefined;
+  }
+
   const athletes: Athlete[] = allAthletes.map(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (a: any): Athlete => ({
@@ -702,6 +1036,22 @@ export async function fetchRoster(teamId: string): Promise<{ team: NBATeam; athl
         ? { city: a.birthPlace.city, state: a.birthPlace.state, country: a.birthPlace.country }
         : undefined,
       hand: a.hand?.type ?? undefined,
+      injuries: Array.isArray(a.injuries)
+        ? a.injuries.map((injury: { status?: string; detail?: string; date?: string }) => ({
+            status: coerceText(injury.status),
+            detail: coerceText(injury.detail),
+            date: coerceText(injury.date),
+          }))
+        : undefined,
+      status: a.status
+        ? {
+            id: coerceText(a.status.id),
+            name: coerceText(a.status.name),
+            type: coerceText(a.status.type),
+            abbreviation: coerceText(a.status.abbreviation),
+          }
+        : undefined,
+      availability: parseAthleteAvailability(a),
     })
   );
 

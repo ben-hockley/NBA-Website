@@ -12,7 +12,7 @@ export default function CareerStatsToggle({ averages, totals }: Props) {
   const [mode, setMode] = useState<"averages" | "totals">(averages ? "averages" : "totals");
 
   if (!averages && !totals) {
-    return <p className="text-sm text-gray-400 dark:text-gray-500">Stats unavailable for this player.</p>;
+    return <p className="text-sm text-slate-400 dark:text-slate-300">Stats unavailable for this player.</p>;
   }
   const active = mode === "averages" ? averages : totals;
 
@@ -23,10 +23,10 @@ export default function CareerStatsToggle({ averages, totals }: Props) {
           <button
             type="button"
             onClick={() => setMode("averages")}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
               mode === "averages"
-                ? "bg-[#17408B] text-white"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                ? "bg-[#1D428A] text-white"
+                : "bg-slate-100 text-slate-600 hover:text-[#1D428A] dark:bg-slate-800 dark:text-slate-200 dark:hover:text-white"
             }`}
           >
             Career Averages
@@ -36,10 +36,10 @@ export default function CareerStatsToggle({ averages, totals }: Props) {
           <button
             type="button"
             onClick={() => setMode("totals")}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
               mode === "totals"
-                ? "bg-[#17408B] text-white"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                ? "bg-[#1D428A] text-white"
+                : "bg-slate-100 text-slate-600 hover:text-[#1D428A] dark:bg-slate-800 dark:text-slate-200 dark:hover:text-white"
             }`}
           >
             Career Totals
@@ -49,7 +49,7 @@ export default function CareerStatsToggle({ averages, totals }: Props) {
 
       {active ? (
         <div>
-          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-300">
             {active.displayName}
           </p>
           <div className="overflow-x-auto">
@@ -59,7 +59,7 @@ export default function CareerStatsToggle({ averages, totals }: Props) {
                   {active.labels.map((label) => (
                     <th
                       key={`career-${mode}-${label}`}
-                      className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500 font-medium whitespace-nowrap"
+                      className="whitespace-nowrap px-2 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-300"
                     >
                       {label}
                     </th>
@@ -71,7 +71,7 @@ export default function CareerStatsToggle({ averages, totals }: Props) {
                   {active.values.map((value, index) => (
                     <td
                       key={`career-${mode}-${index}`}
-                      className="px-2 py-2 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap"
+                      className="whitespace-nowrap px-2 py-2 font-semibold text-slate-800 dark:text-slate-100"
                     >
                       {value}
                     </td>

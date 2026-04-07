@@ -4,6 +4,7 @@ import CareerStatsToggle from "./CareerStatsToggle";
 import SeasonHistoryToggle from "./SeasonHistoryToggle";
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -35,9 +36,10 @@ export default async function PlayerDetailPage({ params }: Props) {
     <div>
       <Link
         href={backHref}
-        className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-[#17408B] dark:hover:text-blue-400 mb-6 transition-colors"
+        className="mb-5 inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white/75 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 transition-all duration-200 hover:scale-[1.02] hover:border-[#1D428A] hover:text-[#1D428A] dark:border-[#1D428A]/45 dark:bg-slate-900/75 dark:text-slate-200"
       >
-        ← Back to Roster
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back to Roster
       </Link>
 
       {error && <ErrorMessage message={error} />}
@@ -46,10 +48,9 @@ export default async function PlayerDetailPage({ params }: Props) {
         <div className="space-y-6">
           {/* Hero */}
           <div
-            className="rounded-2xl p-6 flex flex-wrap items-center gap-5"
+            className="flex flex-wrap items-center gap-5 rounded-3xl border border-slate-200/60 bg-white/75 p-6 backdrop-blur-xl dark:border-[#1D428A]/45 dark:bg-slate-900/75"
             style={{
-              backgroundColor: `#${teamColor}20`,
-              borderLeft: `4px solid #${teamColor}`,
+              backgroundImage: `linear-gradient(120deg, #${teamColor}20, transparent 45%)`,
             }}
           >
             {player.headshot ? (
@@ -58,34 +59,34 @@ export default async function PlayerDetailPage({ params }: Props) {
                 alt={player.displayName}
                 width={120}
                 height={120}
-                className="rounded-full object-cover bg-gray-100 dark:bg-gray-700 shrink-0"
+                className="shrink-0 rounded-full border border-slate-200/70 bg-slate-100 object-cover dark:border-[#1D428A]/40 dark:bg-slate-700"
                 unoptimized
               />
             ) : (
-              <div className="w-[120px] h-[120px] rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-3xl font-bold text-gray-500 shrink-0">
+              <div className="flex h-[120px] w-[120px] shrink-0 items-center justify-center rounded-full bg-slate-200 text-3xl font-bold text-slate-500 dark:bg-slate-600 dark:text-slate-100">
                 {player.displayName.slice(0, 1)}
               </div>
             )}
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 {player.jersey && (
-                  <span className="text-lg font-mono text-gray-400 dark:text-gray-500">
+                  <span className="text-lg font-mono text-slate-400 dark:text-slate-300">
                     #{player.jersey}
                   </span>
                 )}
                 {player.position && (
-                  <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-white/60 dark:bg-gray-700/60 text-gray-700 dark:text-gray-200">
+                  <span className="inline-block rounded-full bg-white/80 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-[#1D428A]/35 dark:text-white">
                     {player.position.displayName}
                   </span>
                 )}
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white truncate">
+              <h1 className="truncate text-3xl font-black tracking-tight text-slate-900 dark:text-white">
                 {player.fullName}
               </h1>
               {player.team && (
                 <Link
                   href={`/teams/${player.team.id}`}
-                  className="flex items-center gap-2 mt-2 hover:opacity-80 transition-opacity"
+                  className="mt-2 flex items-center gap-2 transition-all duration-200 hover:scale-[1.01]"
                 >
                   {player.team.logo && (
                     <Image
@@ -97,7 +98,7 @@ export default async function PlayerDetailPage({ params }: Props) {
                       unoptimized
                     />
                   )}
-                  <span className="text-sm text-gray-600 dark:text-gray-400 hover:text-[#17408B] dark:hover:text-blue-400 transition-colors">
+                  <span className="text-sm text-slate-600 transition-colors hover:text-[#1D428A] dark:text-slate-300 dark:hover:text-white">
                     {player.team.displayName}
                   </span>
                 </Link>
@@ -106,57 +107,57 @@ export default async function PlayerDetailPage({ params }: Props) {
           </div>
 
           {/* Bio + Stats */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Bio */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">
+            <div className="rounded-2xl border border-slate-200/60 bg-white/75 p-5 backdrop-blur-xl dark:border-[#1D428A]/45 dark:bg-slate-900/75">
+              <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
                 Bio
               </h2>
               <dl className="space-y-3">
                 {player.height && (
                   <div>
-                    <dt className="text-xs text-gray-400 dark:text-gray-500 uppercase">Height</dt>
-                    <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">{player.height}</dd>
+                    <dt className="text-xs uppercase text-slate-400">Height</dt>
+                    <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{player.height}</dd>
                   </div>
                 )}
                 {player.weight && (
                   <div>
-                    <dt className="text-xs text-gray-400 dark:text-gray-500 uppercase">Weight</dt>
-                    <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">{player.weight}</dd>
+                    <dt className="text-xs uppercase text-slate-400">Weight</dt>
+                    <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{player.weight}</dd>
                   </div>
                 )}
                 {player.age && (
                   <div>
-                    <dt className="text-xs text-gray-400 dark:text-gray-500 uppercase">Age</dt>
-                    <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">{player.age}</dd>
+                    <dt className="text-xs uppercase text-slate-400">Age</dt>
+                    <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{player.age}</dd>
                   </div>
                 )}
                 {player.birthDate && (
                   <div>
-                    <dt className="text-xs text-gray-400 dark:text-gray-500 uppercase">Born</dt>
-                    <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">{player.birthDate}</dd>
+                    <dt className="text-xs uppercase text-slate-400">Born</dt>
+                    <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{player.birthDate}</dd>
                   </div>
                 )}
                 {player.birthPlace && (
                   <div>
-                    <dt className="text-xs text-gray-400 dark:text-gray-500 uppercase">Birthplace</dt>
-                    <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">{player.birthPlace.display}</dd>
+                    <dt className="text-xs uppercase text-slate-400">Birthplace</dt>
+                    <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{player.birthPlace.display}</dd>
                   </div>
                 )}
                 {player.experience && (
                   <div>
-                    <dt className="text-xs text-gray-400 dark:text-gray-500 uppercase">Experience</dt>
-                    <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">{player.experience.display}</dd>
+                    <dt className="text-xs uppercase text-slate-400">Experience</dt>
+                    <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{player.experience.display}</dd>
                   </div>
                 )}
                 {player.draft && (
                   <div>
-                    <dt className="text-xs text-gray-400 dark:text-gray-500 uppercase">Draft</dt>
-                    <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                    <dt className="text-xs uppercase text-slate-400">Draft</dt>
+                    <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">
                       {draftYear ? (
                         <Link
                           href={`/draft/${draftYear}`}
-                          className="hover:text-[#17408B] dark:hover:text-blue-400 transition-colors"
+                          className="transition-colors hover:text-[#1D428A] dark:hover:text-white"
                         >
                           {player.draft}
                         </Link>
@@ -168,22 +169,22 @@ export default async function PlayerDetailPage({ params }: Props) {
                 )}
                 {player.college && (
                   <div>
-                    <dt className="text-xs text-gray-400 dark:text-gray-500 uppercase">College</dt>
-                    <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">{player.college.name}</dd>
+                    <dt className="text-xs uppercase text-slate-400">College</dt>
+                    <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{player.college.name}</dd>
                   </div>
                 )}
                 {player.hand && (
                   <div>
-                    <dt className="text-xs text-gray-400 dark:text-gray-500 uppercase">Shoots</dt>
-                    <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">{player.hand}</dd>
+                    <dt className="text-xs uppercase text-slate-400">Shoots</dt>
+                    <dd className="text-sm font-medium text-slate-800 dark:text-slate-100">{player.hand}</dd>
                   </div>
                 )}
               </dl>
             </div>
 
             {/* Stats */}
-            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">
+            <div className="rounded-2xl border border-slate-200/60 bg-white/75 p-5 backdrop-blur-xl dark:border-[#1D428A]/45 dark:bg-slate-900/75 lg:col-span-2">
+              <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
                 Stats
               </h2>
               <CareerStatsToggle

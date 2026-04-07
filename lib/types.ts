@@ -41,10 +41,27 @@ export interface Game {
   name: string;
   status: GameStatus;
   competitors: Competitor[];
+  topContributors?: TeamGameTopContributor[];
   venue?: {
     fullName: string;
     address: { city: string; state: string };
   };
+}
+
+export interface GameTopContributor {
+  athleteId: string;
+  athleteName: string;
+  headshot?: string;
+  position?: string;
+  points: number;
+  rebounds: number;
+  assists: number;
+  impact: number;
+}
+
+export interface TeamGameTopContributor {
+  teamId: string;
+  contributor?: GameTopContributor;
 }
 
 export interface GameLineScore {
@@ -239,6 +256,7 @@ export interface TeamRecentResult {
   won: boolean;
   teamScore: string;
   opponentScore: string;
+  topContributors?: TeamGameTopContributor[];
   opponent: {
     id: string;
     displayName: string;
@@ -252,6 +270,17 @@ export interface TeamRecentResult {
   };
 }
 
+export interface TeamSeasonContributor {
+  athleteId: string;
+  athleteName: string;
+  headshot?: string;
+  position?: string;
+  ppg: number;
+  rpg: number;
+  apg: number;
+  impact: number;
+}
+
 // ─── Roster ───────────────────────────────────────────────────────────────────
 
 export interface AthleteStats {
@@ -261,6 +290,12 @@ export interface AthleteStats {
   rpg?: string;
   apg?: string;
   fgPct?: string;
+}
+
+export interface AthleteAvailability {
+  kind: "injured" | "suspended";
+  label: string;
+  detail?: string;
 }
 
 export interface Athlete {
@@ -278,6 +313,9 @@ export interface Athlete {
   birthDate?: string;
   birthPlace?: { city?: string; state?: string; country?: string };
   hand?: string;
+  injuries?: { status?: string; detail?: string; date?: string }[];
+  status?: { id?: string; name?: string; type?: string; abbreviation?: string };
+  availability?: AthleteAvailability;
   stats?: AthleteStats;
 }
 

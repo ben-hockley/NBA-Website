@@ -31,8 +31,8 @@ export default function SeasonHistoryToggle({ categories }: Props) {
   if (!mapped.averages && !mapped.totals) return null;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">
+    <div className="rounded-2xl border border-slate-200/60 bg-white/75 p-5 backdrop-blur-xl dark:border-[#1D428A]/45 dark:bg-slate-900/75">
+      <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
         Season-by-Season Team History
       </h2>
 
@@ -41,10 +41,10 @@ export default function SeasonHistoryToggle({ categories }: Props) {
           <button
             type="button"
             onClick={() => setMode("averages")}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
               mode === "averages"
-                ? "bg-[#17408B] text-white"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                ? "bg-[#1D428A] text-white"
+                : "bg-slate-100 text-slate-600 hover:text-[#1D428A] dark:bg-slate-800 dark:text-slate-200 dark:hover:text-white"
             }`}
           >
             Regular Season Averages
@@ -54,10 +54,10 @@ export default function SeasonHistoryToggle({ categories }: Props) {
           <button
             type="button"
             onClick={() => setMode("totals")}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
               mode === "totals"
-                ? "bg-[#17408B] text-white"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                ? "bg-[#1D428A] text-white"
+                : "bg-slate-100 text-slate-600 hover:text-[#1D428A] dark:bg-slate-800 dark:text-slate-200 dark:hover:text-white"
             }`}
           >
             Regular Season Totals
@@ -67,7 +67,7 @@ export default function SeasonHistoryToggle({ categories }: Props) {
 
       {activeCategory ? (
         <div>
-          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-300">
             {activeCategory.displayName}
           </p>
 
@@ -75,13 +75,13 @@ export default function SeasonHistoryToggle({ categories }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Season</th>
-                  <th className="px-2 py-2 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Team</th>
-                  <th className="px-2 py-2 text-center text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Pos</th>
+                  <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-300">Season</th>
+                  <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-300">Team</th>
+                  <th className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-300">Pos</th>
                   {activeCategory.labels.map((label) => (
                     <th
                       key={`${activeCategory.key}-${label}`}
-                      className="px-2 py-2 text-center text-xs font-medium text-gray-400 dark:text-gray-500 uppercase whitespace-nowrap"
+                      className="whitespace-nowrap px-2 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-300"
                     >
                       {label}
                     </th>
@@ -94,14 +94,14 @@ export default function SeasonHistoryToggle({ categories }: Props) {
                     key={`${activeCategory.key}-${row.seasonLabel}-${row.team.id || row.team.displayName}-${rowIndex}`}
                     className={
                       rowIndex > 0 && activeCategory.rows[rowIndex - 1]?.seasonLabel !== row.seasonLabel
-                        ? "border-t border-gray-200 dark:border-gray-700"
+                        ? "border-t border-slate-200/60 dark:border-[#1D428A]/35"
                         : ""
                     }
                   >
-                    <td className="px-2 py-2 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-2 py-2 font-semibold text-slate-800 dark:text-slate-100">
                       {row.seasonLabel}
                     </td>
-                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-2 py-2 text-slate-700 dark:text-slate-200">
                       <div className="flex items-center gap-2">
                         {row.team.logo && (
                           <Image
@@ -116,7 +116,7 @@ export default function SeasonHistoryToggle({ categories }: Props) {
                         {row.team.id ? (
                           <Link
                             href={`/teams/${row.team.id}`}
-                            className="hover:text-[#17408B] dark:hover:text-blue-400 transition-colors"
+                            className="transition-colors hover:text-[#1D428A] dark:hover:text-white"
                           >
                             {row.team.displayName}
                           </Link>
@@ -125,13 +125,13 @@ export default function SeasonHistoryToggle({ categories }: Props) {
                         )}
                       </div>
                     </td>
-                    <td className="px-2 py-2 text-center text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    <td className="whitespace-nowrap px-2 py-2 text-center text-slate-700 dark:text-slate-200">
                       {row.position ?? "-"}
                     </td>
                     {activeCategory.labels.map((_, statIndex) => (
                       <td
                         key={`${activeCategory.key}-${row.seasonLabel}-${row.team.id}-${statIndex}`}
-                        className="px-2 py-2 text-center tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap"
+                        className="whitespace-nowrap px-2 py-2 text-center tabular-nums text-slate-700 dark:text-slate-200"
                       >
                         {row.stats[statIndex] ?? "-"}
                       </td>
