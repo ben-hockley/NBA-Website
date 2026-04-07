@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const navLinks = [
   { href: "/", label: "Live Scores / Results" },
   { href: "/standings", label: "Standings" },
+  { href: "/stats", label: "Stats" },
   { href: "/teams", label: "Teams / Rosters" },
 ];
 

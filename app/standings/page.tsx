@@ -1,6 +1,8 @@
+import React from "react";
 import { fetchStandings } from "@/lib/api";
 import ErrorMessage from "@/components/ErrorMessage";
 import Image from "next/image";
+import Link from "next/link";
 
 export default async function StandingsPage() {
   let groups = null;
@@ -45,60 +47,85 @@ export default async function StandingsPage() {
                       <th className="text-center px-3 py-3 hidden sm:table-cell">STRK</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {group.teams.map((team, index) => (
-                      <tr
-                        key={team.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-                      >
-                        <td className="px-4 py-3 text-gray-400 text-xs">{index + 1}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            {team.logo ? (
-                              <Image
-                                src={team.logo}
-                                alt={team.abbreviation}
-                                width={24}
-                                height={24}
-                                className="object-contain"
-                                unoptimized
-                              />
-                            ) : (
-                              <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-bold">
-                                {team.abbreviation.slice(0, 2)}
-                              </div>
+                  <tbody>
+                    {[...group.teams]
+                      .sort((a, b) => b.record.winPercent - a.record.winPercent)
+                      .map((team, index) => {
+                        const rank = index + 1;
+                        const showPlayoffDivider = rank === 6;
+                        const showPlayInDivider = rank === 10;
+                        return (
+                          <React.Fragment key={team.id}>
+                            <tr
+                              className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors border-t border-gray-100 dark:border-gray-700"
+                            >
+                              <td className="px-4 py-3 text-gray-400 text-xs">{rank}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  {team.logo ? (
+                                    <Image
+                                      src={team.logo}
+                                      alt={team.abbreviation}
+                                      width={24}
+                                      height={24}
+                                      className="object-contain"
+                                      unoptimized
+                                    />
+                                  ) : (
+                                    <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-bold">
+                                      {team.abbreviation.slice(0, 2)}
+                                    </div>
+                                  )}
+                                  <Link
+                                    href={`/teams/${team.id}`}
+                                    className="font-medium text-gray-900 dark:text-white hover:text-[#17408B] dark:hover:text-blue-400 transition-colors"
+                                  >
+                                    {team.name}
+                                  </Link>
+                                  <span className="text-gray-400 text-xs hidden sm:inline">
+                                    {team.abbreviation}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 text-center font-medium">{team.record.wins}</td>
+                              <td className="px-3 py-3 text-center text-gray-500 dark:text-gray-400">
+                                {team.record.losses}
+                              </td>
+                              <td className="px-3 py-3 text-center">
+                                {team.record.winPercent.toFixed(3).replace(/^0/, "")}
+                              </td>
+                              <td className="px-3 py-3 text-center text-gray-500 dark:text-gray-400">
+                                {team.record.gamesBehind === 0 ? "–" : team.record.gamesBehind.toFixed(1)}
+                              </td>
+                              <td className="px-3 py-3 text-center hidden sm:table-cell">
+                                <span
+                                  className={`text-xs font-medium ${
+                                    team.record.streak?.startsWith("W")
+                                      ? "text-green-600 dark:text-green-400"
+                                      : "text-red-500 dark:text-red-400"
+                                  }`}
+                                >
+                                  {team.record.streak || "–"}
+                                </span>
+                              </td>
+                            </tr>
+                            {showPlayoffDivider && (
+                              <tr className="bg-blue-50 dark:bg-blue-900/20">
+                                <td colSpan={7} className="px-4 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 tracking-wide">
+                                  — Play-In Tournament (7–10) —
+                                </td>
+                              </tr>
                             )}
-                            <span className="font-medium text-gray-900 dark:text-white">
-                              {team.name}
-                            </span>
-                            <span className="text-gray-400 text-xs hidden sm:inline">
-                              {team.abbreviation}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 text-center font-medium">{team.record.wins}</td>
-                        <td className="px-3 py-3 text-center text-gray-500 dark:text-gray-400">
-                          {team.record.losses}
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          {team.record.winPercent.toFixed(3).replace(/^0/, "")}
-                        </td>
-                        <td className="px-3 py-3 text-center text-gray-500 dark:text-gray-400">
-                          {team.record.gamesBehind === 0 ? "–" : team.record.gamesBehind.toFixed(1)}
-                        </td>
-                        <td className="px-3 py-3 text-center hidden sm:table-cell">
-                          <span
-                            className={`text-xs font-medium ${
-                              team.record.streak?.startsWith("W")
-                                ? "text-green-600 dark:text-green-400"
-                                : "text-red-500 dark:text-red-400"
-                            }`}
-                          >
-                            {team.record.streak || "–"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                            {showPlayInDivider && (
+                              <tr className="bg-gray-50 dark:bg-gray-700/30">
+                                <td colSpan={7} className="px-4 py-1 text-xs font-semibold text-gray-400 dark:text-gray-500 tracking-wide">
+                                  — Eliminated from Playoffs —
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>

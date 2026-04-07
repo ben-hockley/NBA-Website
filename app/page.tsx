@@ -1,29 +1,64 @@
 import { fetchScoreboard } from "@/lib/api";
 import GameCard from "@/components/GameCard";
 import ErrorMessage from "@/components/ErrorMessage";
+import ScoreboardDatePicker from "@/components/ScoreboardDatePicker";
 
-export default async function ScoreboardPage() {
-  let games = null;
-  let error: string | null = null;
+interface Props {
+  searchParams: Promise<{ date?: string }>;
+}
 
-  try {
-    games = await fetchScoreboard();
-  } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load scoreboard.";
-  }
+function todayCompactDate(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}${m}${d}`;
+}
 
-  const today = new Date().toLocaleDateString("en-US", {
+function parseQueryDate(value: string | undefined): string {
+  return value && /^\d{8}$/.test(value) ? value : todayCompactDate();
+}
+
+function formatDisplayDate(compact: string): string {
+  const year = Number(compact.slice(0, 4));
+  const month = Number(compact.slice(4, 6));
+  const day = Number(compact.slice(6, 8));
+  const date = new Date(year, month - 1, day);
+
+  return date.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+}
+
+export default async function ScoreboardPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const selectedDate = parseQueryDate(params.date);
+
+  let games = null;
+  let error: string | null = null;
+
+  try {
+    games = await fetchScoreboard(selectedDate);
+  } catch (e) {
+    error = e instanceof Error ? e.message : "Failed to load scoreboard.";
+  }
+
+  const selectedDateDisplay = formatDisplayDate(selectedDate);
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Live Scores &amp; Results</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{today}</p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Live Scores &amp; Results</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{selectedDateDisplay}</p>
+        </div>
+        <ScoreboardDatePicker
+          selectedDateCompact={selectedDate}
+          selectedDateDisplay={selectedDateDisplay}
+        />
       </div>
 
       {error && <ErrorMessage message={error} />}
@@ -31,8 +66,8 @@ export default async function ScoreboardPage() {
       {games && games.length === 0 && (
         <div className="text-center py-20 text-gray-500 dark:text-gray-400">
           <p className="text-5xl mb-4">��</p>
-          <p className="text-lg font-medium">No games scheduled today</p>
-          <p className="text-sm mt-1">Check back later for upcoming NBA games.</p>
+          <p className="text-lg font-medium">No games scheduled on this date</p>
+          <p className="text-sm mt-1">Use the calendar to browse another day.</p>
         </div>
       )}
 
