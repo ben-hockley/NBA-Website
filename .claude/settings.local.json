@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \" import json,sys d=json.load\\(sys.stdin\\) for a in d['athletes'][:3]: print\\(a['athlete']['displayName']\\) hshot = a['athlete'].get\\('headshot', {}\\) print\\(' headshot:', hshot.get\\('href', 'none'\\)\\) team = a['athlete'].get\\('team', {}\\) print\\(' team:', team.get\\('abbreviation', 'none'\\), team.get\\('id', 'none'\\)\\) \")",
+      "Bash(curl -s \"https://site.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete?season=2026&seasontype=2&limit=5&sort=offensive.avgPoints:desc\")",
+      "Bash(python3 -c \" import json,sys d=json.load\\(sys.stdin\\) a = d['athletes'][0] print\\('athlete obj keys:', list\\(a['athlete'].keys\\(\\)\\)\\) print\\(\\) print\\('categories:'\\) for cat in a.get\\('categories', []\\): print\\(' ', cat['name'], '->', cat.get\\('totals', []\\)[:5]\\) \")",
+      "Bash(python3 -c \" import json,sys d=json.load\\(sys.stdin\\) print\\(json.dumps\\(d, indent=2\\)[:4000]\\) \")",
+      "Bash(python3 -c \" import json,sys,os d=json.load\\(sys.stdin\\) a = d['athletes'][0] print\\(' #1:', a['athlete']['displayName']\\) for cat in a['categories']: print\\(' cat:', cat['name'], '| totals:', cat.get\\('totals', []\\)[:6]\\) \" done)",
+      "Bash(python3 -c \" import json,sys d=json.load\\(sys.stdin\\) a = d['athletes'][0]['athlete'] print\\('teamName:', a.get\\('teamName'\\)\\) print\\('teamShortName:', a.get\\('teamShortName'\\)\\) print\\('teamId:', a.get\\('teamId'\\)\\) print\\('teamLogos:', json.dumps\\(a.get\\('teamLogos', []\\)[:2], indent=2\\)\\) \")",
+      "Bash(curl -s \"https://site.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete?season=2026&seasontype=2&limit=1&sort=offensive.avgThreePointFieldGoalsMade:desc\")",
+      "Bash(python3 -c \" import json,sys d=json.load\\(sys.stdin\\) a = d['athletes'][0] print\\('Player:', a['athlete']['displayName']\\) for cat in a.get\\('categories', []\\): print\\(f' {cat[\\\\\"name\\\\\"]}:', cat.get\\('totals'\\)\\) \" echo \"===\" curl -s \"https://site.api.espn.com/apis/common/v3/sports/basketball/nba/statistics/byathlete?season=2026&seasontype=2&limit=1&sort=offensive.freeThrowPct:desc\")",
+      "Bash(python3 -c \" import json,sys d=json.load\\(sys.stdin\\) a = d['athletes'][0] print\\('Player:', a['athlete']['displayName']\\) for cat in a.get\\('categories', []\\): print\\(f' {cat[\\\\\"name\\\\\"]}:', cat.get\\('totals'\\)\\) \")",
+      "Bash(python3 -c \" import json,sys d=json.load\\(sys.stdin\\) print\\('TOP 5 ASSISTS LEADERS:'\\) for a in d['athletes']: name = a['athlete']['displayName'] off = a['categories'][1]['totals'] # offensive category print\\(f'{name}: offensive[0]={off[0]} [1]={off[1]} [2]={off[2]} ...'\\) \")",
+      "Bash(python3 -c \" import json,sys d=json.load\\(sys.stdin\\) print\\('TOP 5 REBOUNDS LEADERS:'\\) for a in d['athletes']: name = a['athlete']['displayName'] gen = a['categories'][0]['totals'] # general category print\\(f'{name}: general[9]={gen[9]} [10]={gen[10]} [11]={gen[11]}'\\) \")",
+      "Bash(python3 -c \" import json,sys d=json.load\\(sys.stdin\\) print\\('ASSISTS LEADERS - FULL OFFENSIVE ARRAYS:'\\) for a in d['athletes']: name = a['athlete']['displayName'] off = a['categories'][1]['totals'] print\\(f'{name}: {off[:12]}'\\) \")",
+      "Bash(npm run:*)"
+    ]
+  }
+}
