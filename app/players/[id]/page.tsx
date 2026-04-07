@@ -1,28 +1,13 @@
 import { fetchPlayerDetails } from "@/lib/api";
-import type { PlayerStats } from "@/lib/types";
 import ErrorMessage from "@/components/ErrorMessage";
+import CareerStatsToggle from "./CareerStatsToggle";
+import SeasonHistoryToggle from "./SeasonHistoryToggle";
 import Image from "next/image";
 import Link from "next/link";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
-
-const STAT_LABELS: { key: keyof PlayerStats; label: string }[] = [
-  { key: "gamesPlayed", label: "GP" },
-  { key: "avgMinutes", label: "MIN" },
-  { key: "avgPoints", label: "PTS" },
-  { key: "avgRebounds", label: "REB" },
-  { key: "avgAssists", label: "AST" },
-  { key: "avgBlocks", label: "BLK" },
-  { key: "avgSteals", label: "STL" },
-  { key: "avgTurnovers", label: "TOV" },
-  { key: "avgFouls", label: "PF" },
-  { key: "fieldGoalPct", label: "FG%" },
-  { key: "threePointPct", label: "3P%" },
-  { key: "freeThrowPct", label: "FT%" },
-];
-
 
 export default async function PlayerDetailPage({ params }: Props) {
   const { id } = await params;
@@ -37,6 +22,14 @@ export default async function PlayerDetailPage({ params }: Props) {
 
   const backHref = player?.team ? `/teams/${player.team.id}/roster` : "/teams";
   const teamColor = player?.team?.color ?? "17408B";
+  const draftYear = player?.draft?.match(/\b(19|20)\d{2}\b/)?.[0];
+  const seasonHistoryForToggle = player
+    ? player.seasonHistory.filter((category) => {
+      const text = `${category.key} ${category.displayName}`.toLowerCase();
+      if (text.includes("misc")) return false;
+      return text.includes("averag") || text.includes("total");
+    })
+    : [];
 
   return (
     <div>
@@ -159,7 +152,18 @@ export default async function PlayerDetailPage({ params }: Props) {
                 {player.draft && (
                   <div>
                     <dt className="text-xs text-gray-400 dark:text-gray-500 uppercase">Draft</dt>
-                    <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">{player.draft}</dd>
+                    <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {draftYear ? (
+                        <Link
+                          href={`/draft/${draftYear}`}
+                          className="hover:text-[#17408B] dark:hover:text-blue-400 transition-colors"
+                        >
+                          {player.draft}
+                        </Link>
+                      ) : (
+                        player.draft
+                      )}
+                    </dd>
                   </div>
                 )}
                 {player.college && (
@@ -182,198 +186,14 @@ export default async function PlayerDetailPage({ params }: Props) {
               <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">
                 Stats
               </h2>
-              {player.regularSeasonStats || player.careerStats ? (
-                <div className="space-y-5">
-                  {player.regularSeasonStats && (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
-                        Regular Season
-                      </p>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-center">
-                          <thead>
-                            <tr>
-                              {STAT_LABELS.map((s) => (
-                                <th
-                                  key={s.key}
-                                  className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500 font-medium"
-                                >
-                                  {s.label}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              {STAT_LABELS.map((s) => (
-                                <td
-                                  key={s.key}
-                                  className="px-2 py-2 font-medium text-gray-800 dark:text-gray-200"
-                                >
-                                  {player.regularSeasonStats![s.key]}
-                                </td>
-                              ))}
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                  {player.careerStats && (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
-                        Career
-                      </p>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-center">
-                          <thead>
-                            <tr>
-                              {STAT_LABELS.map((s) => (
-                                <th
-                                  key={s.key}
-                                  className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500 font-medium"
-                                >
-                                  {s.label}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              {STAT_LABELS.map((s) => (
-                                <td
-                                  key={s.key}
-                                  className="px-2 py-2 font-medium text-gray-800 dark:text-gray-200"
-                                >
-                                  {player.careerStats![s.key]}
-                                </td>
-                              ))}
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-400 dark:text-gray-500">Stats unavailable for this player.</p>
-              )}
+              <CareerStatsToggle
+                averages={player.careerRegularSeasonAverages}
+                totals={player.careerRegularSeasonTotals}
+              />
             </div>
           </div>
 
-          {/* Season History */}
-          {player.seasonHistory.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">
-                Season-by-Season Team History
-              </h2>
-
-              <div className="space-y-5">
-                {player.seasonHistory.map((category) => (
-                  <div key={category.key}>
-                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
-                      {category.displayName}
-                    </p>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Season</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Player</th>
-                            <th className="px-2 py-2 text-left text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Team</th>
-                            <th className="px-2 py-2 text-center text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">Pos</th>
-                            {category.labels.map((label) => (
-                              <th
-                                key={`${category.key}-${label}`}
-                                className="px-2 py-2 text-center text-xs font-medium text-gray-400 dark:text-gray-500 uppercase whitespace-nowrap"
-                              >
-                                {label}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {category.rows.map((row, rowIndex) => (
-                            <tr key={`${category.key}-${row.seasonLabel}-${row.team.id || row.team.displayName}-${rowIndex}`}>
-                              <td className="px-2 py-2 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
-                                {row.seasonLabel}
-                              </td>
-                              <td className="px-2 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                                {row.playerName}
-                              </td>
-                              <td className="px-2 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                                <div className="flex items-center gap-2">
-                                  {row.team.logo && (
-                                    <Image
-                                      src={row.team.logo}
-                                      alt={row.team.abbreviation}
-                                      width={18}
-                                      height={18}
-                                      className="object-contain"
-                                      unoptimized
-                                    />
-                                  )}
-                                  {row.team.id ? (
-                                    <Link
-                                      href={`/teams/${row.team.id}`}
-                                      className="hover:text-[#17408B] dark:hover:text-blue-400 transition-colors"
-                                    >
-                                      {row.team.displayName}
-                                    </Link>
-                                  ) : (
-                                    <span>{row.team.displayName}</span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-2 py-2 text-center text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                                {row.position ?? "-"}
-                              </td>
-                              {category.labels.map((_, statIndex) => (
-                                <td
-                                  key={`${category.key}-${row.seasonLabel}-${row.team.id}-${statIndex}`}
-                                  className="px-2 py-2 text-center tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap"
-                                >
-                                  {row.stats[statIndex] ?? "-"}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* News */}
-          {player.news.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">
-                Recent News
-              </h2>
-              <div className="space-y-3">
-                {player.news.map((item, i) => (
-                  <a
-                    key={i}
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg p-3 -mx-3 transition-colors"
-                  >
-                    <p className="font-medium text-sm text-gray-900 dark:text-white">{item.headline}</p>
-                    {item.description && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
-                        {item.description}
-                      </p>
-                    )}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
+          <SeasonHistoryToggle categories={seasonHistoryForToggle} />
         </div>
       )}
     </div>

@@ -305,6 +305,12 @@ export interface PlayerNews {
   imageUrl?: string;
 }
 
+export interface PlayerStatsTable {
+  displayName: string;
+  labels: string[];
+  values: string[];
+}
+
 export interface PlayerSeasonHistoryRow {
   seasonYear: number;
   seasonLabel: string;
@@ -348,6 +354,55 @@ export interface StatCategory {
   totalLeaders: StatLeaderEntry[];
 }
 
+// ─── Draft ────────────────────────────────────────────────────────────────────
+
+export interface DraftTeam {
+  id: string;
+  displayName: string;
+  abbreviation: string;
+  logo?: string;
+}
+
+export interface DraftPlayer {
+  id: string;
+  displayName: string;
+  headshot?: string;
+  position?: string;
+  sourceTeam?: string;
+  sourceTeamLogo?: string;
+  sourceCountryCode?: string;
+}
+
+export interface DraftPick {
+  status: string;
+  pick: number;
+  overall: number;
+  round: number;
+  traded: boolean;
+  tradeNote?: string;
+  team: DraftTeam;
+  player: DraftPlayer;
+}
+
+export interface DraftResult {
+  year: number;
+  rounds: number;
+  picks: DraftPick[];
+}
+
+export interface DraftProspect {
+  rank: number;
+  player: DraftPlayer;
+  school: {
+    displayName: string;
+    abbreviation?: string;
+    logo?: string;
+    countryCode?: string;
+  };
+  height?: string;
+  weight?: string;
+}
+
 export interface PlayerDetail {
   id: string;
   fullName: string;
@@ -367,6 +422,8 @@ export interface PlayerDetail {
   team?: { id: string; displayName: string; abbreviation: string; logo: string; color: string };
   regularSeasonStats?: PlayerStats;
   careerStats?: PlayerStats;
+  careerRegularSeasonAverages?: PlayerStatsTable;
+  careerRegularSeasonTotals?: PlayerStatsTable;
   seasonHistory: PlayerSeasonHistoryCategory[];
   news: PlayerNews[];
 }

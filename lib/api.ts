@@ -12,12 +12,16 @@ import type {
   PlayerStats,
   StatCategory,
   StatLeaderEntry,
+  DraftProspect,
+  DraftResult,
+  DraftTeam,
   Team,
 } from "./types";
 
 const ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba";
 const ESPN_V2_BASE = "https://site.api.espn.com/apis/v2/sports/basketball/nba";
 const ESPN_COMMON_V3 = "https://site.api.espn.com/apis/common/v3/sports/basketball/nba";
+const ESPN_CORE_BASE = "https://sports.core.api.espn.com/v2";
 
 // ─── Scoreboard ───────────────────────────────────────────────────────────────
 
@@ -64,6 +68,123 @@ function coerceText(value: any): string | undefined {
   if (typeof value !== "object") return undefined;
 
   return value.displayValue ?? value.displayName ?? value.description ?? value.detail ?? value.name;
+}
+
+function extractIdFromRef(ref?: string): string {
+  if (!ref) return "";
+  const match = ref.match(/\/(\d+)(?:\?|$)/);
+  return match?.[1] ?? "";
+}
+
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  argentina: "AR",
+  australia: "AU",
+  austria: "AT",
+  bahamas: "BS",
+  belgium: "BE",
+  bosnia: "BA",
+  "bosnia and herzegovina": "BA",
+  brazil: "BR",
+  cameroon: "CM",
+  canada: "CA",
+  china: "CN",
+  congo: "CG",
+  croatia: "HR",
+  czechia: "CZ",
+  "czech republic": "CZ",
+  denmark: "DK",
+  egypt: "EG",
+  estonia: "EE",
+  finland: "FI",
+  france: "FR",
+  georgia: "GE",
+  germany: "DE",
+  greece: "GR",
+  hungary: "HU",
+  iceland: "IS",
+  iran: "IR",
+  ireland: "IE",
+  israel: "IL",
+  italy: "IT",
+  japan: "JP",
+  latvia: "LV",
+  lithuania: "LT",
+  mali: "ML",
+  mexico: "MX",
+  montenegro: "ME",
+  netherlands: "NL",
+  "new zealand": "NZ",
+  nigeria: "NG",
+  norway: "NO",
+  philippines: "PH",
+  poland: "PL",
+  portugal: "PT",
+  russia: "RU",
+  senegal: "SN",
+  serbia: "RS",
+  slovenia: "SI",
+  "south korea": "KR",
+  "south sudan": "SS",
+  spain: "ES",
+  sweden: "SE",
+  switzerland: "CH",
+  taiwan: "TW",
+  tunisia: "TN",
+  turkey: "TR",
+  ukraine: "UA",
+  "united kingdom": "GB",
+  "united states": "US",
+  "united states of america": "US",
+  usa: "US",
+  us: "US",
+  england: "GB",
+  scotland: "GB",
+  wales: "GB",
+  uruguay: "UY",
+  venezuela: "VE",
+};
+
+const CITY_TO_COUNTRY: Record<string, string> = {
+  melbourne: "Australia",
+};
+
+function normalizeCountryName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[.'`]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getCountryCode(value?: string): string | undefined {
+  if (!value) return undefined;
+  const normalized = normalizeCountryName(value);
+  return COUNTRY_NAME_TO_CODE[normalized];
+}
+
+function inferCountryFromTeamMeta(location?: string, displayName?: string): string | undefined {
+  if (location && getCountryCode(location)) return location;
+
+  if (location) {
+    const cityCountry = CITY_TO_COUNTRY[normalizeCountryName(location)];
+    if (cityCountry) return cityCountry;
+  }
+
+  if (displayName) {
+    const normalizedDisplayName = normalizeCountryName(displayName);
+    const countryName = Object.keys(COUNTRY_NAME_TO_CODE).find((country) =>
+      normalizedDisplayName.includes(country)
+    );
+    if (countryName) {
+      return countryName
+        .split(" ")
+        .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
+        .join(" ");
+    }
+  }
+
+  return undefined;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -751,6 +872,302 @@ export async function fetchStatLeaders(): Promise<StatCategory[]> {
   });
 }
 
+// ─── Draft ────────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseDraftTeam(teamData: any): DraftTeam {
+  const displayName =
+    teamData?.displayName ??
+    [teamData?.location, teamData?.name].filter((part: unknown): part is string => Boolean(part)).join(" ");
+
+  return {
+    id: String(teamData?.id ?? ""),
+    displayName: displayName || "Unknown Team",
+    abbreviation: teamData?.abbreviation ?? teamData?.shortDisplayName ?? "",
+    logo: teamData?.logo ?? teamData?.logos?.[0]?.href,
+  };
+}
+
+export async function fetchDraftResults(season: number): Promise<DraftResult> {
+  const res = await fetch(`${ESPN_BASE}/draft?season=${season}`, {
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) throw new Error(`Draft results fetch failed: ${res.status}`);
+  const data = await res.json();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const teamsById = new Map<string, DraftTeam>((data.teams ?? []).map((team: any) => {
+    const parsed = parseDraftTeam(team);
+    return [parsed.id, parsed] as const;
+  }));
+
+  const positionsById = new Map<string, string>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (data.positions ?? []).map((position: any) => [
+      String(position?.id ?? ""),
+      position?.abbreviation ?? position?.displayName ?? "",
+    ])
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawPicks: any[] = data.picks ?? [];
+
+  const draftAthleteIds = Array.from(
+    new Set(
+      rawPicks
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((pick: any) => String(pick?.athlete?.id ?? ""))
+        .filter(Boolean)
+    )
+  );
+
+  const draftAthleteDetailsResults = await Promise.allSettled(
+    draftAthleteIds.map((draftAthleteId) =>
+      fetch(
+        `${ESPN_CORE_BASE}/sports/basketball/leagues/nba/seasons/${season}/draft/athletes/${draftAthleteId}?lang=en&region=us`,
+        { next: { revalidate: 86400 } }
+      ).then((response) => {
+        if (!response.ok) throw new Error(`Draft athlete detail fetch failed: ${response.status}`);
+        return response.json();
+      })
+    )
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const draftAthletesById = new Map<string, any>();
+  draftAthleteDetailsResults.forEach((result, i) => {
+    if (result.status !== "fulfilled") return;
+    draftAthletesById.set(draftAthleteIds[i], result.value);
+  });
+
+  const sourceTeamRefs = Array.from(
+    new Set(
+      draftAthleteIds
+        .map((draftAthleteId) => draftAthletesById.get(draftAthleteId)?.team?.$ref)
+        .filter((ref: unknown): ref is string => typeof ref === "string")
+    )
+  );
+
+  const sourceTeamResults = await Promise.allSettled(
+    sourceTeamRefs.map((ref) =>
+      fetch(ref, { next: { revalidate: 86400 } }).then((response) => {
+        if (!response.ok) throw new Error(`Draft source team fetch failed: ${response.status}`);
+        return response.json();
+      })
+    )
+  );
+
+  const sourceTeamsByRef = new Map<string, DraftTeam>();
+  sourceTeamResults.forEach((result, i) => {
+    if (result.status !== "fulfilled") return;
+    sourceTeamsByRef.set(sourceTeamRefs[i], parseDraftTeam(result.value));
+  });
+
+  const picks = rawPicks
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((pick: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const athlete: any = pick.athlete ?? {};
+      const teamId = String(pick.teamId ?? "");
+      const draftAthleteId = String(athlete.id ?? "");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const draftAthleteDetail: any = draftAthletesById.get(draftAthleteId);
+      const sourceTeamRef: string | undefined = draftAthleteDetail?.team?.$ref;
+      const sourceTeam = sourceTeamRef ? sourceTeamsByRef.get(sourceTeamRef) : undefined;
+
+      const fallbackSourceName =
+        athlete.team?.shortDisplayName ??
+        athlete.team?.displayName ??
+        athlete.team?.abbreviation ??
+        athlete.leagueAffiliation;
+
+      const sourceCountryCandidate = athlete.leagueAffiliation ?? fallbackSourceName;
+
+      return {
+        status: pick.status ?? "",
+        pick: Number(pick.pick ?? 0),
+        overall: Number(pick.overall ?? pick.pick ?? 0),
+        round: Number(pick.round ?? 1),
+        traded: Boolean(pick.traded),
+        tradeNote: coerceText(pick.tradeNote),
+        team: teamsById.get(teamId) ?? {
+          id: teamId,
+          displayName: "Unknown Team",
+          abbreviation: "",
+        },
+        player: {
+          id: String(athlete.alternativeId ?? athlete.id ?? ""),
+          displayName: athlete.displayName ?? "Unknown",
+          headshot: athlete.headshot?.href,
+          position: positionsById.get(String(athlete.position?.id ?? "")) ?? undefined,
+          sourceTeam: sourceTeam?.displayName ?? fallbackSourceName,
+          sourceTeamLogo: sourceTeam?.logo,
+          sourceCountryCode: sourceTeam ? undefined : getCountryCode(sourceCountryCandidate),
+        },
+      };
+    })
+    .sort((left: { overall: number }, right: { overall: number }) => left.overall - right.overall);
+
+  const rounds = Number(data.rounds ?? 0) || Math.max(0, ...picks.map((pick: { round: number }) => pick.round));
+
+  return {
+    year: Number(data.year ?? season),
+    rounds,
+    picks,
+  };
+}
+
+export async function fetchDraftProspects(season: number, limit = 100): Promise<DraftProspect[]> {
+  const res = await fetch(
+    `${ESPN_CORE_BASE}/sports/basketball/leagues/nba/seasons/${season}/draft/athletes?limit=${limit}`,
+    { next: { revalidate: 3600 } }
+  );
+  if (!res.ok) throw new Error(`Draft prospects fetch failed: ${res.status}`);
+
+  const data = await res.json();
+  const refs: string[] = (data.items ?? [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((item: any) => item?.$ref)
+    .filter((ref: unknown): ref is string => typeof ref === "string")
+    .slice(0, limit);
+
+  const detailResults = await Promise.allSettled(
+    refs.map((ref) =>
+      fetch(ref, { next: { revalidate: 3600 } }).then((response) => {
+        if (!response.ok) throw new Error(`Draft prospect detail fetch failed: ${response.status}`);
+        return response.json();
+      })
+    )
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const details: any[] = detailResults
+    .filter((result): result is PromiseFulfilledResult<unknown> => result.status === "fulfilled")
+    .map((result) => result.value);
+
+  // Resolve school metadata once per unique reference.
+  const schoolRefs = Array.from(
+    new Set(
+      details
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((detail: any) => detail.team?.$ref)
+        .filter((ref: unknown): ref is string => typeof ref === "string")
+    )
+  );
+
+  const schoolResults = await Promise.allSettled(
+    schoolRefs.map((ref) =>
+      fetch(ref, { next: { revalidate: 86400 } }).then((response) => {
+        if (!response.ok) throw new Error(`Draft school fetch failed: ${response.status}`);
+        return response.json();
+      })
+    )
+  );
+
+  const schoolsByRef = new Map<string, DraftTeam>();
+  schoolResults.forEach((result, i) => {
+    if (result.status !== "fulfilled") return;
+    schoolsByRef.set(schoolRefs[i], parseDraftTeam(result.value));
+  });
+
+  const noSchoolAthleteRefs = Array.from(
+    new Set(
+      details
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((detail: any) => !detail.team?.$ref)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((detail: any) => detail.athlete?.$ref)
+        .filter((ref: unknown): ref is string => typeof ref === "string")
+    )
+  );
+
+  const noSchoolAthleteResults = await Promise.allSettled(
+    noSchoolAthleteRefs.map((ref) =>
+      fetch(ref, { next: { revalidate: 86400 } }).then((response) => {
+        if (!response.ok) throw new Error(`Draft no-school athlete fetch failed: ${response.status}`);
+        return response.json();
+      })
+    )
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const noSchoolAthletesByRef = new Map<string, any>();
+  noSchoolAthleteResults.forEach((result, i) => {
+    if (result.status !== "fulfilled") return;
+    noSchoolAthletesByRef.set(noSchoolAthleteRefs[i], result.value);
+  });
+
+  const noSchoolTeamRefs = Array.from(
+    new Set(
+      noSchoolAthleteRefs
+        .map((athleteRef) => noSchoolAthletesByRef.get(athleteRef)?.team?.$ref)
+        .filter((ref: unknown): ref is string => typeof ref === "string")
+    )
+  );
+
+  const noSchoolTeamResults = await Promise.allSettled(
+    noSchoolTeamRefs.map((ref) =>
+      fetch(ref, { next: { revalidate: 86400 } }).then((response) => {
+        if (!response.ok) throw new Error(`Draft no-school team fetch failed: ${response.status}`);
+        return response.json();
+      })
+    )
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const noSchoolTeamsByRef = new Map<string, any>();
+  noSchoolTeamResults.forEach((result, i) => {
+    if (result.status !== "fulfilled") return;
+    noSchoolTeamsByRef.set(noSchoolTeamRefs[i], result.value);
+  });
+
+  return details
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((detail: any, index: number): DraftProspect => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const attrs: any[] = detail.attributes ?? [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const overallAttr: any = attrs.find((attr: any) => attr?.name === "overall");
+      const schoolRef: string | undefined = detail.team?.$ref;
+      const school = schoolRef ? schoolsByRef.get(schoolRef) : undefined;
+
+      const athleteRef: string | undefined = detail.athlete?.$ref;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fallbackAthlete: any = athleteRef ? noSchoolAthletesByRef.get(athleteRef) : undefined;
+      const fallbackTeamRef: string | undefined = fallbackAthlete?.team?.$ref;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fallbackTeam: any = fallbackTeamRef ? noSchoolTeamsByRef.get(fallbackTeamRef) : undefined;
+
+      const fallbackCountry =
+        detail.leagueAffiliation ??
+        fallbackAthlete?.birthPlace?.country ??
+        inferCountryFromTeamMeta(fallbackTeam?.location, fallbackTeam?.displayName);
+
+      const fallbackCountryCode = getCountryCode(fallbackCountry);
+      const fromDisplayName = school?.displayName ?? fallbackCountry ?? fallbackTeam?.displayName ?? "Unknown";
+
+      return {
+        rank: Number(overallAttr?.displayValue ?? overallAttr?.value ?? index + 1),
+        player: {
+          id: extractIdFromRef(detail.athlete?.$ref) || String(detail.id ?? ""),
+          displayName: detail.displayName ?? detail.fullName ?? "Unknown",
+          position: detail.position?.abbreviation ?? detail.position?.displayName,
+          headshot: detail.logo?.href,
+          sourceTeam: school?.abbreviation,
+        },
+        school: {
+          displayName: fromDisplayName,
+          abbreviation: school?.abbreviation,
+          logo: school?.logo,
+          countryCode: school ? undefined : fallbackCountryCode,
+        },
+        height: detail.displayHeight,
+        weight: detail.displayWeight,
+      };
+    })
+    .sort((left, right) => left.rank - right.rank);
+}
+
 // ─── Player Detail ─────────────────────────────────────────────────────────────
 
 // Build a PlayerStats map from the overview endpoint's statistics block.
@@ -783,6 +1200,103 @@ function formatTeamSlug(slug: string): string {
     .join(" ");
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getCareerCategoryTables(categories: any[]): {
+  averages?: PlayerDetail["careerRegularSeasonAverages"];
+  totals?: PlayerDetail["careerRegularSeasonTotals"];
+} {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const findCategory = (matcher: (category: any) => boolean) => categories.find(matcher);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const averagesCategory: any = findCategory((category: any) => {
+    const text = `${category.name ?? ""} ${category.displayName ?? ""}`.toLowerCase();
+    return text.includes("averag") && !text.includes("misc");
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const totalsCategory: any = findCategory((category: any) => {
+    const text = `${category.name ?? ""} ${category.displayName ?? ""}`.toLowerCase();
+    return text.includes("total") && !text.includes("misc");
+  });
+
+  const toTable =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (category: any): PlayerDetail["careerRegularSeasonAverages"] | undefined => {
+      if (!category) return undefined;
+      const labels: string[] = category.labels ?? [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const values: string[] = (category.totals ?? []).map((value: any) => String(value ?? "–"));
+      if (!labels.length || !values.length) return undefined;
+      return {
+        displayName: category.displayName ?? category.name ?? "Career",
+        labels,
+        values,
+      };
+    };
+
+  return {
+    averages: toTable(averagesCategory),
+    totals: toTable(totalsCategory),
+  };
+}
+
+async function fetchCollegeAthleteDetails(playerId: string): Promise<PlayerDetail> {
+  const res = await fetch(
+    `${ESPN_CORE_BASE}/sports/basketball/leagues/mens-college-basketball/athletes/${playerId}?lang=en&region=us`
+  );
+  if (!res.ok) throw new Error(`Player bio fetch failed: ${res.status}`);
+
+  const athleteData = await res.json();
+  if (!athleteData?.id) throw new Error("Player data not found");
+
+  let schoolName: string | undefined;
+  const schoolRef = athleteData.team?.$ref;
+  if (typeof schoolRef === "string") {
+    const schoolRes = await fetch(schoolRef, { next: { revalidate: 86400 } });
+    if (schoolRes.ok) {
+      const schoolData = await schoolRes.json();
+      schoolName = schoolData?.displayName;
+    }
+  }
+
+  const displayExperience =
+    coerceText(athleteData.displayExperience) ??
+    (typeof athleteData.experience?.years === "number"
+      ? `${athleteData.experience.years} yr`
+      : undefined);
+
+  return {
+    id: String(athleteData.id ?? playerId),
+    fullName: athleteData.fullName ?? athleteData.displayName ?? "Unknown",
+    displayName: athleteData.displayName ?? athleteData.fullName ?? "Unknown",
+    headshot: athleteData.headshot?.href,
+    jersey: athleteData.jersey,
+    position: athleteData.position
+      ? {
+          abbreviation: athleteData.position.abbreviation ?? "",
+          displayName: athleteData.position.displayName ?? athleteData.position.name ?? "",
+        }
+      : undefined,
+    height: athleteData.displayHeight,
+    weight: athleteData.displayWeight,
+    age: athleteData.age,
+    experience: displayExperience ? { display: displayExperience } : undefined,
+    college: schoolName ? { name: schoolName } : undefined,
+    birthDate: athleteData.displayDOB ?? undefined,
+    birthPlace: athleteData.displayBirthPlace ? { display: athleteData.displayBirthPlace } : undefined,
+    draft: undefined,
+    hand: athleteData.hand?.type,
+    team: undefined,
+    regularSeasonStats: undefined,
+    careerStats: undefined,
+    careerRegularSeasonAverages: undefined,
+    careerRegularSeasonTotals: undefined,
+    seasonHistory: [],
+    news: [],
+  };
+}
+
 export async function fetchPlayerDetails(playerId: string): Promise<PlayerDetail> {
   unstable_noStore();
 
@@ -792,7 +1306,12 @@ export async function fetchPlayerDetails(playerId: string): Promise<PlayerDetail
     fetch(`${ESPN_COMMON_V3}/athletes/${playerId}/overview`),
     fetch(`${ESPN_COMMON_V3}/athletes/${playerId}/stats`),
   ]);
-  if (!bioRes.ok) throw new Error(`Player bio fetch failed: ${bioRes.status}`);
+  if (!bioRes.ok) {
+    if (bioRes.status === 404) {
+      return fetchCollegeAthleteDetails(playerId);
+    }
+    throw new Error(`Player bio fetch failed: ${bioRes.status}`);
+  }
   const bioData = await bioRes.json();
   const overviewData = overviewRes.ok ? await overviewRes.json() : {};
   const statsData = statsRes.ok ? await statsRes.json() : {};
@@ -824,17 +1343,23 @@ export async function fetchPlayerDetails(playerId: string): Promise<PlayerDetail
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (category.statistics ?? []).map((row: any) => {
           const teamSlug: string = row.teamSlug ?? "";
+          const isCombinedSeasonRow = (!row.teamId || row.teamId === "0") && /totals?/i.test(teamSlug);
+          if (isCombinedSeasonRow) return null;
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const teamMeta: any = teamSlug
             ? teamsBySlug[teamSlug]
             : teamValues.find((team) => team.id === row.teamId);
+
+          const resolvedTeamId = teamMeta?.id ?? row.teamId ?? "";
+          if (!resolvedTeamId) return null;
 
           return {
             seasonYear: Number(row.season?.year ?? 0),
             seasonLabel: row.season?.displayName ?? String(row.season?.year ?? "Unknown"),
             playerName: a.fullName ?? a.displayName ?? "Unknown",
             team: {
-              id: teamMeta?.id ?? row.teamId ?? "",
+              id: resolvedTeamId,
               abbreviation: teamMeta?.abbreviation ?? "N/A",
               displayName: teamMeta?.displayName ?? formatTeamSlug(teamSlug),
               logo: teamMeta?.logos?.[0]?.href ?? teamMeta?.logo ?? "",
@@ -844,10 +1369,20 @@ export async function fetchPlayerDetails(playerId: string): Promise<PlayerDetail
             stats: (row.stats ?? []).map((value: any) => String(value ?? "–")),
           };
         })
-        .sort((left, right) => {
+        .filter(
+          (
+            row: PlayerDetail["seasonHistory"][number]["rows"][number] | null
+          ): row is PlayerDetail["seasonHistory"][number]["rows"][number] => row !== null
+        )
+        .sort(
+          (
+            left: PlayerDetail["seasonHistory"][number]["rows"][number],
+            right: PlayerDetail["seasonHistory"][number]["rows"][number]
+          ) => {
           if (right.seasonYear !== left.seasonYear) return right.seasonYear - left.seasonYear;
           return left.team.displayName.localeCompare(right.team.displayName);
-        });
+          }
+        );
 
       return {
         key: category.name ?? category.displayName ?? "history",
@@ -856,6 +1391,8 @@ export async function fetchPlayerDetails(playerId: string): Promise<PlayerDetail
         rows,
       };
     }).filter((category: { labels: string[]; rows: unknown[] }) => category.labels.length > 0 && category.rows.length > 0);
+
+  const careerCategoryTables = getCareerCategoryTables(statsData.categories ?? []);
 
   return {
     id: a.id,
@@ -890,6 +1427,8 @@ export async function fetchPlayerDetails(playerId: string): Promise<PlayerDetail
     careerStats: careerSplit && statNames.length
       ? extractStatsFromSplit(statNames, careerSplit.stats ?? [])
       : undefined,
+    careerRegularSeasonAverages: careerCategoryTables.averages,
+    careerRegularSeasonTotals: careerCategoryTables.totals,
     seasonHistory,
     news: (overviewData.news ?? []).slice(0, 3).map(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

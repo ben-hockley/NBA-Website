@@ -6,8 +6,9 @@ import { usePathname } from "next/navigation";
 const navLinks = [
   { href: "/", label: "Live Scores / Results" },
   { href: "/standings", label: "Standings" },
+  { href: "/draft/2026", label: "Draft", startsWith: "/draft" },
   { href: "/stats", label: "Stats" },
-  { href: "/teams", label: "Teams / Rosters" },
+  { href: "/teams", label: "Teams" },
 ];
 
 export default function Navbar() {
@@ -25,8 +26,8 @@ export default function Navbar() {
 
           {/* Nav links */}
           <div className="flex gap-1 sm:gap-2">
-            {navLinks.map(({ href, label }) => {
-              const active = pathname === href;
+            {navLinks.map(({ href, label, startsWith }) => {
+              const active = startsWith ? pathname.startsWith(startsWith) : pathname === href;
               return (
                 <Link
                   key={href}

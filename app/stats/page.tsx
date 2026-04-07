@@ -16,7 +16,7 @@ export default async function StatsPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Stat Leaders</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">2024–25 NBA Season</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">2025-26 NBA Season</p>
       </div>
 
       {error && <ErrorMessage message={error} />}
