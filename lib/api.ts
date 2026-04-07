@@ -5,6 +5,8 @@ import type {
   GameStatus,
   StandingsGroup,
   NBATeam,
+  TeamOverview,
+  TeamRecentResult,
   Athlete,
   PlayerDetail,
   PlayerStats,
@@ -107,7 +109,7 @@ function parseGame(event: any): Game {
         abbreviation: c.team.abbreviation,
         displayName: c.team.displayName,
         shortDisplayName: c.team.shortDisplayName,
-        logo: c.team.logo ?? "",
+        logo: c.team.logo ?? c.team.logos?.[0]?.href ?? "",
         color: c.team.color ?? "000000",
         alternateColor: c.team.alternateColor ?? "ffffff",
       },
@@ -355,6 +357,25 @@ export async function fetchStandings(): Promise<StandingsGroup[]> {
 
 // ─── Teams ────────────────────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseSiteTeam(teamData: any): NBATeam {
+  return {
+    id: teamData?.id ?? "",
+    displayName: teamData?.displayName ?? "",
+    abbreviation: teamData?.abbreviation ?? "",
+    logo: teamData?.logo ?? teamData?.logos?.[0]?.href ?? "",
+    color: teamData?.color ?? "000000",
+    alternateColor: teamData?.alternateColor ?? "ffffff",
+    location: teamData?.location ?? "",
+    name: teamData?.name ?? "",
+  };
+}
+
+function formatStreak(streakValue: number | undefined): string | undefined {
+  if (typeof streakValue !== "number" || streakValue === 0) return undefined;
+  return `${streakValue > 0 ? "W" : "L"}${Math.abs(streakValue)}`;
+}
+
 export async function fetchTeams(): Promise<NBATeam[]> {
   // Use the site API teams endpoint which has richer data including logos
   const siteRes = await fetch(`${ESPN_BASE}/teams?limit=50`, {
@@ -372,17 +393,143 @@ export async function fetchTeams(): Promise<NBATeam[]> {
 
   return teams.map(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (t: any): NBATeam => ({
-      id: t.team.id,
-      displayName: t.team.displayName,
-      abbreviation: t.team.abbreviation,
-      logo: t.team.logos?.[0]?.href ?? "",
-      color: t.team.color ?? "000000",
-      alternateColor: t.team.alternateColor ?? "ffffff",
-      location: t.team.location ?? "",
-      name: t.team.name ?? "",
-    })
+    (t: any): NBATeam => parseSiteTeam(t.team)
   );
+}
+
+export async function fetchTeamOverview(teamId: string): Promise<TeamOverview> {
+  unstable_noStore();
+
+  const res = await fetch(`${ESPN_BASE}/teams/${teamId}`);
+  if (!res.ok) throw new Error(`Team overview fetch failed: ${res.status}`);
+  const data = await res.json();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const teamData: any = data.team;
+  if (!teamData) throw new Error("Team overview response missing team data.");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recordItems: any[] = teamData.record?.items ?? [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const overallRecord: any = recordItems.find((item: any) => item.type === "total") ?? recordItems[0];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const homeRecord: any = recordItems.find((item: any) => item.type === "home");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const awayRecord: any = recordItems.find((item: any) => item.type === "road");
+
+  const overallStats = new Map<string, number>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (overallRecord?.stats ?? []).map((stat: any) => [stat.name, Number(stat.value)])
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nextEvent: any = teamData.nextEvent?.[0];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nextCompetition: any = nextEvent?.competitions?.[0];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nextTeamCompetitor: any = nextCompetition?.competitors?.find((c: any) => c.team?.id === teamId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nextOpponent: any = nextCompetition?.competitors?.find((c: any) => c.team?.id !== teamId);
+
+  const venue = teamData.franchise?.venue;
+
+  return {
+    ...parseSiteTeam(teamData),
+    shortDisplayName: teamData.shortDisplayName ?? teamData.displayName ?? "",
+    standingSummary: teamData.standingSummary,
+    record: {
+      overall: overallRecord?.summary,
+      home: homeRecord?.summary,
+      away: awayRecord?.summary,
+      wins: overallStats.get("wins"),
+      losses: overallStats.get("losses"),
+      winPercent: overallStats.get("winPercent"),
+      gamesBehind: overallStats.get("gamesBehind"),
+      pointDifferential: overallStats.get("pointDifferential") ?? overallStats.get("differential"),
+      streak: formatStreak(overallStats.get("streak")),
+    },
+    venue: venue
+      ? {
+          fullName: venue.fullName ?? "",
+          city: venue.address?.city,
+          state: venue.address?.state,
+          image: venue.images?.[0]?.href,
+        }
+      : undefined,
+    nextGame: nextCompetition && nextOpponent
+      ? {
+          gameId: nextEvent.id ?? nextCompetition.id ?? "",
+          date: nextEvent.date ?? nextCompetition.date ?? "",
+          homeAway: nextTeamCompetitor?.homeAway === "home" ? "home" : "away",
+          opponent: {
+            id: nextOpponent.team?.id ?? "",
+            displayName: nextOpponent.team?.displayName ?? "",
+            abbreviation: nextOpponent.team?.abbreviation ?? "",
+            logo: nextOpponent.team?.logo ?? nextOpponent.team?.logos?.[0]?.href ?? "",
+          },
+          venue: nextCompetition.venue
+            ? {
+                fullName: nextCompetition.venue.fullName ?? "",
+                city: nextCompetition.venue.address?.city,
+                state: nextCompetition.venue.address?.state,
+              }
+            : undefined,
+        }
+      : undefined,
+  };
+}
+
+export async function fetchTeamRecentResults(teamId: string, limit = 10): Promise<TeamRecentResult[]> {
+  unstable_noStore();
+
+  const res = await fetch(`${ESPN_BASE}/teams/${teamId}/schedule`);
+  if (!res.ok) throw new Error(`Team schedule fetch failed: ${res.status}`);
+  const data = await res.json();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const events: any[] = data.events ?? [];
+  return events
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((event: any): TeamRecentResult | null => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const competition: any = event.competitions?.[0];
+      if (!competition) return null;
+
+      const state = competition.status?.type?.state;
+      if (state !== "post") return null;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const teamCompetitor: any = competition.competitors?.find((c: any) => c.team?.id === teamId);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const opponentCompetitor: any = competition.competitors?.find((c: any) => c.team?.id !== teamId);
+      if (!teamCompetitor || !opponentCompetitor) return null;
+
+      return {
+        gameId: event.id ?? competition.id ?? "",
+        date: event.date ?? competition.date ?? "",
+        statusText: coerceText(competition.status?.type?.shortDetail) ?? coerceText(competition.status?.type?.description) ?? "Final",
+        homeAway: teamCompetitor.homeAway === "home" ? "home" : "away",
+        won: Boolean(teamCompetitor.winner),
+        teamScore: coerceText(teamCompetitor.score) ?? "0",
+        opponentScore: coerceText(opponentCompetitor.score) ?? "0",
+        opponent: {
+          id: opponentCompetitor.team?.id ?? "",
+          displayName: opponentCompetitor.team?.displayName ?? "",
+          abbreviation: opponentCompetitor.team?.abbreviation ?? "",
+          logo: opponentCompetitor.team?.logo ?? opponentCompetitor.team?.logos?.[0]?.href ?? "",
+        },
+        venue: competition.venue
+          ? {
+              fullName: competition.venue.fullName ?? "",
+              city: competition.venue.address?.city,
+              state: competition.venue.address?.state,
+            }
+          : undefined,
+      };
+    })
+    .filter((game): game is TeamRecentResult => game !== null)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, limit);
 }
 
 // ─── Roster ───────────────────────────────────────────────────────────────────

@@ -35,7 +35,7 @@ export default async function PlayerDetailPage({ params }: Props) {
     error = e instanceof Error ? e.message : "Failed to load player.";
   }
 
-  const backHref = player?.team ? `/teams/${player.team.id}` : "/teams";
+  const backHref = player?.team ? `/teams/${player.team.id}/roster` : "/teams";
   const teamColor = player?.team?.color ?? "17408B";
 
   return (

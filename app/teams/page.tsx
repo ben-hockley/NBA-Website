@@ -21,7 +21,7 @@ export default async function TeamsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">NBA Teams</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Select a team to view their current roster
+          Select a team to view overview, roster, and recent results
         </p>
       </div>
 

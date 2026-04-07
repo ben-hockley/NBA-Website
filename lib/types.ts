@@ -185,6 +185,73 @@ export interface NBATeam {
   name: string;
 }
 
+export interface TeamOverview {
+  id: string;
+  displayName: string;
+  shortDisplayName: string;
+  abbreviation: string;
+  logo: string;
+  color: string;
+  alternateColor: string;
+  location: string;
+  name: string;
+  standingSummary?: string;
+  record: {
+    overall?: string;
+    home?: string;
+    away?: string;
+    wins?: number;
+    losses?: number;
+    winPercent?: number;
+    gamesBehind?: number;
+    pointDifferential?: number;
+    streak?: string;
+  };
+  venue?: {
+    fullName: string;
+    city?: string;
+    state?: string;
+    image?: string;
+  };
+  nextGame?: {
+    gameId: string;
+    date: string;
+    homeAway: "home" | "away";
+    opponent: {
+      id: string;
+      displayName: string;
+      abbreviation: string;
+      logo: string;
+    };
+    venue?: {
+      fullName: string;
+      city?: string;
+      state?: string;
+    };
+  };
+}
+
+export interface TeamRecentResult {
+  gameId: string;
+  date: string;
+  statusText: string;
+  homeAway: "home" | "away";
+  won: boolean;
+  teamScore: string;
+  opponentScore: string;
+  opponent: {
+    id: string;
+    displayName: string;
+    abbreviation: string;
+    logo: string;
+  };
+  venue?: {
+    fullName: string;
+    city?: string;
+    state?: string;
+  };
+}
+
 // ─── Roster ───────────────────────────────────────────────────────────────────
 
 export interface AthleteStats {
